@@ -1,103 +1,128 @@
-# Oráculo del Sistema Financiero Argentino
+# Argentine Financial System Oracle · Oráculo del Sistema Financiero Argentino
+
+> **Available in English and Spanish — Disponible en inglés y español**
+
+A **Claude Skill** that answers questions about the Argentine financial system by querying live official sources from the **BCRA** and **INDEC**. Ask in natural language — *"How many credit cards does Banco Galicia have?"*, *"Which bank has the highest NPL?"*, *"What was June's inflation?"* — and the oracle fetches the figure from the official report, validates it is the latest version, extracts it, and responds citing the period and source.
 
 Un **Skill de Claude** que responde preguntas sobre el sistema financiero argentino consultando en vivo las fuentes oficiales del **BCRA** y el **INDEC**. Preguntás en lenguaje natural —"¿cuántas tarjetas de crédito tiene el Banco Galicia?", "¿qué banco tiene más mora?", "¿cuál fue la inflación de junio?"— y el oráculo va a buscar el dato al reporte oficial, valida que sea la última versión disponible, lo extrae y te responde citando el período y la fuente.
 
-## Cómo funciona (importante: no es cacheado ni instantáneo)
+---
 
-Este oráculo **no usa datos guardados ni conocimiento previo del modelo**. Para cada pregunta:
+## How it works / Cómo funciona
 
-1. **Identifica** qué dato pedís y en qué fuente oficial vive.
-2. **Descarga el último reporte publicado** de esa fuente, en el momento de la consulta.
-3. **Valida que sea la versión más reciente disponible** (los reportes del BCRA e INDEC se publican con rezago y con nombres que cambian mes a mes; el oráculo prueba hacia atrás hasta encontrar el archivo válido más nuevo).
-4. **Extrae el dato exacto** del reporte con scripts de parsing probados.
-5. **Responde** con el dato, el período al que corresponde y la fuente.
+**It does not use cached data or model memory.** For each question it:
 
-Como cada consulta implica descargar y procesar un reporte oficial (algunos de varios MB), **las respuestas tardan lo que tarda esa descarga y extracción** — no son instantáneas. A cambio, son datos oficiales reales y verificables, no una estimación.
+1. **Identifies** what data was requested and which official source holds it.
+2. **Downloads the latest published report** from that source, at query time.
+3. **Validates it is the most recent available version** (BCRA and INDEC reports are published with a lag and with filenames that change monthly; the oracle tries backwards until it finds the newest valid file).
+4. **Extracts the exact figure** from the report using tested parsing scripts.
+5. **Responds** with the figure, the period it covers, and the source.
 
-**Y lo más importante: si el dato no existe en ningún reporte, el oráculo lo dice.** No inventa, no aproxima, no completa con conocimiento general. Una respuesta de "el BCRA no publica ese dato" es preferible a un número inventado.
+Since each query involves downloading and processing an official report (some weighing several MB), **responses take as long as that download and extraction** — they are not instant. In return, you get real, verifiable official data, not an estimate.
 
-## Qué puede responder
+**Most importantly: if the data does not exist in any report, the oracle says so.** It does not fabricate, approximate, or complete with general knowledge.
 
-Cualquier indicador que esté en estas tres fuentes oficiales:
+---
 
-**BCRA — Entidades Financieras** (mensual): mora y cartera irregular, situaciones de deuda 1 a 5, previsiones, balance (activo, préstamos, depósitos, patrimonio), indicadores (ROE, ROA, apalancamiento, tasas, liquidez).
+## What it can answer / Qué puede responder
 
-**BCRA — Información Adicional** (trimestral): tarjetas de crédito y débito, cajas de ahorro, cuentas sueldo, sucursales, cajeros, empleados.
+Any indicator published in these official sources:
 
-**BCRA — Pagos Minoristas** (mensual): volumen y monto de transferencias, tarjetas, débitos directos, cheques, ECHEQ, ticket promedio.
+**BCRA — Financial Entities** (monthly): NPL and irregular portfolio, debt situations 1–5, provisions, balance sheet (assets, loans, deposits, equity), ratios (ROE, ROA, leverage, rates, liquidity).
 
-**INDEC — IPC Nacional** (mensual): inflación (nivel general, núcleo, regulados, estacional), variación mensual e interanual, divisiones de la canasta.
+**BCRA — Additional Information** (quarterly): credit and debit cards, savings accounts, payroll accounts, branches, ATMs, employees.
 
-### Tipos de preguntas
+**BCRA — Retail Payments** (monthly): volume and amount of transfers, cards, direct debits, checks, ECHEQ, average ticket.
 
-- **Puntuales:** "¿Cuántas cajas de ahorro tiene el Banco Nación?"
-- **Analíticas / rankings:** "¿Cuáles son los 5 bancos con más mora?", "¿los 3 más grandes por activo?"
-- **De evolución:** "¿Cómo evolucionó la mora del Galicia en el último año?"
-- **Cruzadas:** "¿El ticket promedio de crédito le ganó a la inflación el último mes?"
+**INDEC — National CPI** (monthly): inflation (headline, core, regulated, seasonal), monthly and year-on-year change, basket divisions.
 
-## Instalación
+### Example questions / Ejemplos de preguntas
 
-### Requisitos
-- Tener **Claude** con un entorno de **ejecución de código** activado (la herramienta de análisis, Claude Code, o Cowork). El oráculo necesita poder ejecutar descargas (`wget`) y scripts de Python. Sin eso, tiene las instrucciones pero no puede ir a buscar los datos.
+- "How many savings accounts does Banco Nación have?" / "¿Cuántas cajas de ahorro tiene el Banco Nación?"
+- "Top 5 banks by NPL rate" / "Top 5 bancos por mora"
+- "How did Galicia's NPL evolve over the last year?" / "¿Cómo evolucionó la mora del Galicia en el último año?"
+- "Did the average credit card ticket beat inflation last month?" / "¿El ticket promedio de crédito le ganó a la inflación el último mes?"
 
-### Pasos
-1. Descargá el archivo del Skill: **`bcra-oraculo.skill`** (está en este repositorio).
-2. Instalalo en tu Claude:
-   - En **claude.ai**: Configuración → Skills → subir el archivo.
-   - En **Claude Code / Cowork**: seguí las instrucciones de instalación de skills de tu entorno.
-3. Listo. En cualquier conversación nueva (con la herramienta de análisis activada), preguntá lo que quieras sobre el sistema financiero argentino y el Skill se activa solo.
+See more examples in [`docs/EJEMPLOS.md`](docs/EJEMPLOS.md).
 
-> La primera vez, si falta alguna librería de Python, el Skill instala lo necesario (`xlrd`, `openpyxl`) automáticamente.
+---
 
-## Ejemplo de uso
+## Installation / Instalación
 
-**Vos:** ¿Cuántas tarjetas de crédito tiene el Banco Galicia, cuántas cajas de ahorro y cuál es su mora?
+### Requirements / Requisitos
+A Claude environment with **code execution** enabled (Claude's analysis tool, Claude Code, or Cowork). The oracle needs to run downloads (`wget`) and Python parsing scripts. Without it, Claude can read the instructions but cannot fetch data.
 
-**Claude (con el oráculo):**
-> El Banco Galicia, según los datos del BCRA:
-> - **Tarjetas de crédito:** 4.383.666 plásticos emitidos (Información Adicional, marzo 2026).
-> - **Cajas de ahorro:** 10.316.472 cuentas (Información Adicional, marzo 2026).
-> - **Mora:** 8,09% de cartera irregular (Entidades Financieras, abril 2026).
+### Steps / Pasos
 
-Ver más ejemplos en [`docs/EJEMPLOS.md`](docs/EJEMPLOS.md).
+1. Download the skill file: **`bcra-oraculo.skill`** (in this repository).
+2. Install it in Claude:
+   - On **claude.ai**: Settings → Skills → upload the file.
+   - On **Claude Code / Cowork**: follow your environment's skill installation instructions.
+3. Done. In any new conversation (with the analysis tool active), ask anything about the Argentine financial system and the skill activates automatically — **in whichever language you use**.
 
-## Estructura del repositorio
+> On first run, if a Python library is missing, the skill installs it automatically (`xlrd`, `openpyxl`).
+
+---
+
+## Repository structure / Estructura del repositorio
 
 ```
-Oraculo-sistema_financiero/
-├── README.md                    → este archivo
-├── LICENSE                      → licencia MIT
+BCRA-Oracle/
+├── README.md
+├── LICENSE
 ├── skill/
-│   └── bcra-oraculo/            → el Skill (esto es lo que se instala)
-│       ├── SKILL.md             → instrucciones maestras del oráculo
-│       ├── references/          → fuentes, diccionario de datos, recetas de consulta
-│       └── scripts/             → extractores de cada fuente
+│   ├── bcra-oraculo/            → Spanish skill (Skill en español)
+│   │   ├── SKILL.md
+│   │   ├── references/
+│   │   │   ├── fuentes.md
+│   │   │   ├── diccionario.md
+│   │   │   └── consultas.md
+│   │   └── scripts/
+│   │       ├── consultar_entidad.py
+│   │       ├── consultar_ipc.py
+│   │       ├── consultar_pagos.py
+│   │       └── requirements.txt
+│   └── bcra-oracle-en/          → English skill (Skill en inglés)
+│       ├── SKILL.md
+│       ├── references/
+│       │   ├── sources.md
+│       │   ├── dictionary.md
+│       │   └── queries.md
+│       └── scripts/             → same scripts as Spanish version
 ├── docs/
-│   └── EJEMPLOS.md              → catálogo de preguntas de ejemplo
-└── bcra-oraculo.skill           → el Skill empaquetado, listo para instalar
+│   └── EJEMPLOS.md
+└── bcra-oraculo.skill           → packaged skill, ready to install
 ```
 
-## Limitaciones
+---
 
-- **Solo responde lo que está en las fuentes.** Cotización del dólar, acciones, tasas de otros países, noticias: fuera de alcance.
-- **Requiere ejecución de código.** No funciona en un Claude sin la herramienta de análisis.
-- **Las fuentes oficiales cambian sin aviso.** El BCRA y el INDEC a veces modifican formatos o nombres de archivos. Cuando eso pasa, la extracción puede requerir un ajuste; el Skill le da a Claude el contexto para adaptarse, pero no es infalible.
-- **No arma dashboards.** Este proyecto solo consulta y responde datos. (Existe un proyecto hermano para generar dashboards.)
+## Limitations / Limitaciones
 
-## Fuentes oficiales
+- **Only answers what is in the sources.** Exchange rates, stocks, rates from other countries, news: out of scope.
+- **Requires code execution.** Does not work in a Claude environment without the analysis tool.
+- **Official sources change without notice.** The BCRA and INDEC sometimes modify formats or filenames. When that happens, extraction may need an adjustment; the skill gives Claude the context to adapt, but it is not infallible.
+- **No dashboards.** This project only queries and answers data.
 
-- BCRA — Entidades Financieras: https://www.bcra.gob.ar/PublicacionesEstadisticas/Entidades_financieras.asp
-- BCRA — Pagos Minoristas: https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe-mensual-pagos-minoristas.asp
-- INDEC — IPC: https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-5-31
+---
 
-## Licencia
+## Official sources / Fuentes oficiales
 
-MIT — ver [LICENSE](LICENSE). Podés usar, modificar y redistribuir este código libremente, manteniendo el aviso de copyright.
+- BCRA — Financial Entities / Entidades Financieras: https://www.bcra.gob.ar/PublicacionesEstadisticas/Entidades_financieras.asp
+- BCRA — Retail Payments / Pagos Minoristas: https://www.bcra.gob.ar/PublicacionesEstadisticas/Informe-mensual-pagos-minoristas.asp
+- INDEC — CPI / IPC: https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-5-31
 
-## Autor
+---
+
+## License / Licencia
+
+MIT — see [LICENSE](LICENSE). Free to use, modify and redistribute, keeping the copyright notice.
+
+## Author / Autor
 
 Alejandro Vaamonde
 
 ---
+
+*This project is not affiliated with or endorsed by the BCRA, INDEC, or Anthropic. It queries public data from official sources.*
 
 *Este proyecto no está afiliado ni respaldado por el BCRA, el INDEC ni Anthropic. Consulta datos públicos de fuentes oficiales.*

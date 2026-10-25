@@ -39,6 +39,7 @@ Run from this skill's folder (paths are relative to this file). The scripts only
 | How many entities exceed a threshold | `python3 scripts/consultar_ranking.py irr_tot --mayor-que 10` |
 | Recent evolution (up to 5 periods) | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot --serie` |
 | Evolution over 6 months or more | `python3 scripts/consultar_historico.py Galicia --campo irr_tot --meses 12` |
+| Panel of many entities and months in one CSV (for analysis or for another skill) | `python3 scripts/consultar_panel.py --meses 24 --salida panel.csv` (`--top 20`, `--entidades Galicia Macro`, `--historicas` to add entities that no longer exist) |
 | Last month's inflation (with divisions) | `python3 scripts/consultar_ipc.py` |
 | Inflation for a month, a series or cumulative | `python3 scripts/consultar_ipc.py --mes 2026-06` · `--serie nucleo --meses 12` · `--acumulado 2026` · `--acumulado --desde 2025-07 --hasta 2026-06` |
 | Which basket division rose the most | `python3 scripts/consultar_ipc.py --ranking-divisiones` |
@@ -98,3 +99,4 @@ Give the figure with its unit, the period and the source. If calculated, add how
 - `references/dictionary.md`: every field, unit, frequency and which calculations are possible. Read it if the question uses a concept not listed above.
 - `references/queries.md`: recipes for analytical, evolution, cross-source and "data does not exist" questions.
 - `references/sources.md`: URLs, the format of each source, known pitfalls and how to adapt if the BCRA or INDEC change something. Read it only if a script fails.
+- `references/contrato.md` (in Spanish): what another skill can use from this one (functions, scripts, output format and versioning policy). Read it when building a skill on top of this one.

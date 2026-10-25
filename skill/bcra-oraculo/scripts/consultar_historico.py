@@ -15,11 +15,14 @@ Uso:
 
 Cada PDF trae 3 meses consecutivos más 2 diciembres, así que se descarga
 un PDF cada 3 meses (12 meses = 4 PDF). Se procesan solo las páginas de la
-entidad, no el documento completo.
+entidad, no el documento completo. Si el último PDF es de un mes de cierre de
+trimestre y trae vacía la información adicional de ese trimestre, se lee
+también el del mes siguiente, que la completa.
 
 Historia: completa desde 2014. En 2011-2013 faltan los indicadores de mora
 (el BCRA usaba otros códigos y no se informan para no confundirlos). Los PDF
-de 2010 y anteriores no se pueden leer. Solo funciona para entidades vigentes hoy.
+de 2010 y anteriores no se pueden leer. Solo funciona para entidades vigentes
+hoy; las que cambiaron de nombre se encuentran igual, porque se ubican por código.
 """
 import argparse
 import os
@@ -38,6 +41,11 @@ def meses_entre(desde, hasta):
         out.append(m)
         m = bc.mes_anterior(m)
     return out[::-1]
+
+
+def mes_siguiente(ym):
+    a, m = int(ym[:4]), int(ym[5:7])
+    return '%04d-%02d' % (a + m // 12, m % 12 + 1)
 
 
 def main():
@@ -71,17 +79,19 @@ def main():
             plan.append(m)
             cubiertos.update({m, bc.mes_anterior(m), bc.mes_anterior(m, 2)})
 
-    def procesar(ym):
-        try:
-            ruta = bc.pdf_entidades(ym)
-        except bc.NoEncontrado:
-            ym = bc.mes_anterior(ym)  # el mes pedido todavía no está publicado
-            ruta = bc.pdf_entidades(ym)
+    def leer(ym):
+        ruta = bc.pdf_entidades(ym)
         texto, pag = bc.paginas_entidad_pdf(ruta, ent)
         r = bc.normalizar_pdf(texto)
         r['pdf'] = bc.PDF_ENTIDADES.format(ym=ym.replace('-', '')) + ' (pág. %d)' % pag
         r['ym'] = ym
         return r
+
+    def procesar(ym):
+        try:
+            return leer(ym)
+        except bc.NoEncontrado:
+            return leer(bc.mes_anterior(ym))  # el mes pedido todavía no está publicado
 
     resultados = bc.en_paralelo(procesar, plan, workers=4)
     series = {k: {} for k in a.campo}
@@ -90,6 +100,23 @@ def main():
     for _, r in resultados:
         if isinstance(r, Exception):
             errores.append(str(r))
+
+    # El PDF de un mes de cierre de trimestre suele traer ese trimestre vacío
+    # ('---') en la información adicional; lo completa el PDF del mes siguiente.
+    trimestrales = [k for k in a.campo if bc.CAMPOS[k][0] == 'adicional']
+    sin_completar = None
+    if ok and trimestrales:
+        ultimo = max(ok, key=lambda x: x['ym'])
+        m = ultimo['ym']
+        if m[5:] in ('03', '06', '09', '12') and desde <= m and any(
+                (ultimo['campos'].get(k) or {}).get(m) is None for k in trimestrales):
+            try:
+                ok.append(leer(mes_siguiente(m)))
+            except bc.NoEncontrado:
+                sin_completar = m
+            except bc.ErrorFuente as e:
+                errores.append(str(e))
+
     for r in sorted(ok, key=lambda x: x['ym']):  # el PDF más nuevo pisa revisiones
         pdfs.append(r['pdf'])
         for k in a.campo:
@@ -120,6 +147,9 @@ def main():
             item['meses_sin_dato'] = faltan
         if info['seccion'] == 'adicional':
             item['nota'] = 'Dato trimestral: solo hay valores a fin de cada trimestre.'
+            if sin_completar and serie.get(sin_completar) is None:
+                item['nota'] += (' El trimestre %s lo completa el PDF de %s, que todavía no '
+                                 'está publicado.' % (sin_completar, mes_siguiente(sin_completar)))
         out['datos'][k] = item
     if errores:
         out['errores_fuente'] = errores

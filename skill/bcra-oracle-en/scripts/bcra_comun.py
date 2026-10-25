@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 BCRA = 'https://www.bcra.gob.ar'
 API = BCRA + '/api/endpoints/'
@@ -893,7 +893,12 @@ def indice_pdf(ruta):
 
 
 def paginas_entidad_pdf(ruta, entidad):
-    """Devuelve (texto_de_sus_paginas, pagina_inicial) para una entidad o grupo."""
+    """Devuelve (texto_de_sus_paginas, pagina_inicial) para una entidad o grupo.
+
+    Las entidades se identifican por código: la primera página de cada una
+    empieza con 'CODIGO - NOMBRE'. Así se encuentran también en los PDF de
+    cuando tenían otro nombre (Santander Río, BBVA Francés).
+    """
     items = indice_pdf(ruta)
     if not items:
         raise ErrorFuente('No se pudo leer el índice del PDF')
@@ -904,27 +909,40 @@ def paginas_entidad_pdf(ruta, entidad):
         if n == objetivo or n.startswith(objetivo) or objetivo.startswith(n):
             idx = i
             break
-    if idx is None and entidad['tipo'] == 'grupo':
+    if entidad['tipo'] == 'entidad':
+        cod = codigo_api(entidad['codigo'])
+        if idx is not None:
+            # Camino rápido: el nombre actual figura en el índice. La numeración
+            # impresa y la del archivo difieren en una cantidad que cambia según
+            # el mes (de 0 a 3 en los PDF revisados), pero es constante dentro
+            # de cada documento.
+            inicio = items[idx][1]
+            siguientes = [p for _, p in items[idx + 1:] if p > inicio]
+            largo = (siguientes[0] - inicio) if siguientes else 4
+            desde = max(1, inicio - 3)
+            ventana = pdftotext(ruta, desde, inicio + 8).split('\f')
+            for i, pag in enumerate(ventana):
+                if pag.lstrip().startswith(cod + ' - '):
+                    return pdftotext(ruta, desde + i, desde + i + largo - 1), desde + i
+        # Con otro nombre en ese PDF, o el nombre es de otra entidad: por código
+        paginas = _codigos_pdf(ruta)
+        if cod not in paginas:
+            raise ErrorFuente('La entidad "%s" (código %s) no figura en el PDF'
+                              % (entidad['nombre'], cod))
+        inicio = paginas[cod]
+        siguientes = [p for p in paginas.values() if p > inicio]
+        largo = (min(siguientes) - inicio) if siguientes else 4
+        return pdftotext(ruta, inicio, inicio + largo - 1), inicio
+    if idx is None:
         clave_g = {'sistema': 'SISTEMA FINANCIERO', 'publicos': 'BANCOS PUBLICOS',
                    'privados': 'BANCOS PRIVADOS', 'companias': 'COMPANIAS FINANCIERAS',
                    'top10': '10 PRIMEROS BANCOS PRIVADOS'}[entidad['grupo']]
         idx = next((i for i, (n, _) in enumerate(items) if norm(n) == clave_g), None)
     if idx is None:
-        raise ErrorFuente('La entidad "%s" no figura en el índice del PDF' % entidad['nombre'])
+        raise ErrorFuente('El grupo "%s" no figura en el índice del PDF' % entidad['nombre'])
     inicio = items[idx][1]
     siguientes = [p for _, p in items[idx + 1:] if p > inicio]
     largo = (siguientes[0] - inicio) if siguientes else 4
-    # La numeración impresa y la del archivo difieren en una cantidad que
-    # cambia según el mes (de 0 a 3 en los PDF revisados), pero es constante
-    # dentro de cada documento.
-    if entidad['tipo'] == 'entidad':
-        cod = '%s - ' % codigo_api(entidad['codigo'])
-        desde = max(1, inicio - 3)
-        ventana = pdftotext(ruta, desde, inicio + 8).split('\f')
-        for i, pag in enumerate(ventana):
-            if pag.lstrip().startswith(cod):
-                return pdftotext(ruta, desde + i, desde + i + largo - 1), desde + i
-        raise ErrorFuente('No se ubicaron las páginas de "%s" en el PDF' % entidad['nombre'])
     desfase = _desfase_pdf(ruta, items)
     if desfase is None:
         raise ErrorFuente('No se pudo ubicar la sección "%s" en el PDF' % entidad['nombre'])
@@ -946,6 +964,34 @@ def _desfase_pdf(ruta, items):
                       norm(nombre).startswith(norm(m.group(1)))):
                 return desde + i - pag
     return None
+
+
+def _codigos_pdf(ruta):
+    """{'00072': pagina_del_archivo, ...}: dónde empieza cada entidad del PDF.
+
+    Lee el documento entero (unos 2 s), así que el resultado se guarda junto
+    al PDF y vale mientras el PDF no se vuelva a descargar.
+    """
+    guardado = ruta + '.codigos.json'
+    try:
+        if os.path.getmtime(guardado) >= os.path.getmtime(ruta):
+            with open(guardado, encoding='utf-8') as f:
+                return json.load(f)
+    except (OSError, ValueError):
+        pass
+    paginas = {}
+    for i, texto in enumerate(pdftotext(ruta, 1, 9999).split('\f')):
+        m = re.match(r'\s*(\d{5}) - ', texto)
+        if m:
+            paginas.setdefault(m.group(1), i + 1)
+    try:
+        tmp = guardado + '.%d.%d.tmp' % (os.getpid(), threading.get_ident())
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(paginas, f)
+        os.replace(tmp, guardado)
+    except OSError:
+        pass  # sin caché si el disco no deja escribir
+    return paginas
 
 
 PER_RE = re.compile(r'\b(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Set|Oct|Nov|Dic)-(\d{4})\b')

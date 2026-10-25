@@ -196,13 +196,13 @@ Corre los valores de control de publicaciones cerradas (Galicia en el PDF de abr
 
 - **Only answers what is in the sources.** Exchange rates, stocks, rates from other countries, board rates for fixed-term deposits, news: out of scope.
 - **Requires code execution and network access** to `www.bcra.gob.ar` and `www.indec.gob.ar`.
-- **History:** complete since 2014; for 2011–2013 the NPL ratios are missing (the BCRA used other codes); nothing before 2011. Only for entities that exist today, and only since their current name: entities are looked up by name in the PDF index, so Santander (formerly Santander Río) is not found in PDFs before June 2022, nor BBVA (formerly BBVA Francés) before December 2019.
+- **History:** complete since 2014; for 2011–2013 the NPL ratios are missing (the BCRA used other codes); nothing before 2011. Only for entities that exist today.
 - **Official sources change without notice.** When the BCRA or INDEC change a format or a URL, extraction may need an adjustment. `tools/verificar.py` detects it, and the skill gives Claude the context to adapt, but it is not infallible.
 - **No dashboards.** This project only queries and answers data.
 
 - **Solo responde lo que está en las fuentes.** Dólar, acciones, tasas de otros países, tasas de pizarra de plazo fijo, noticias: fuera de alcance.
 - **Requiere ejecución de código y acceso de red** a `www.bcra.gob.ar` y `www.indec.gob.ar`.
-- **Historia:** completa desde 2014; en 2011-2013 faltan los indicadores de mora (el BCRA usaba otros códigos); antes de 2011, nada. Solo para entidades vigentes hoy, y desde que tienen su nombre actual: la entidad se busca por nombre en el índice del PDF, así que el Santander (antes Santander Río) no aparece en los PDF anteriores a junio de 2022, ni el BBVA (antes BBVA Francés) en los anteriores a diciembre de 2019.
+- **Historia:** completa desde 2014; en 2011-2013 faltan los indicadores de mora (el BCRA usaba otros códigos); antes de 2011, nada. Solo para entidades vigentes hoy.
 - **Las fuentes oficiales cambian sin aviso.** Cuando el BCRA o el INDEC cambian un formato o una URL, la extracción puede necesitar un ajuste. `tools/verificar.py` lo detecta, y el skill le da a Claude el contexto para adaptarse, pero no es infalible.
 - **No arma dashboards.** Este proyecto solo consulta y responde datos.
 

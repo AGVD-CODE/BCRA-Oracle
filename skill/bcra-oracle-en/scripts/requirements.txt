@@ -1,2 +1,5 @@
-xlrd>=2.0
-openpyxl>=3.0
+# Los scripts usan solo la biblioteca estándar de Python 3.8+: no hay que instalar nada.
+#
+# Opcional, solo para consultar_historico.py y la sección "ficha" de consultar_entidad.py:
+#   pdftotext (paquete del sistema poppler-utils, no se instala con pip)
+#   Debian/Ubuntu: apt-get install -y poppler-utils   ·   macOS: brew install poppler

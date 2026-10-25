@@ -1,114 +1,100 @@
 ---
 name: bcra-oracle-en
-description: Query official Argentine financial system data (BCRA and INDEC) to answer specific and analytical questions. Use ALWAYS when the user asks about Argentine bank indicators such as credit/debit cards, savings accounts, deposits, loans, non-performing loans (NPL), branches, ATMs, employees, ROE, ROA, leverage, balance sheet, or INDEC inflation figures, or comparisons and rankings between financial entities (which bank has the most X, how did Y evolve, top 5 by Z). The skill downloads the latest available official report, validates it is the most recent version, extracts the real data and responds citing the period and source. If the data does not exist in any report, it states so — it never fabricates. Does not produce dashboards or HTML files, only queries and answers.
+description: Queries live official data on the Argentine financial system (BCRA and INDEC) and answers with the figure, its period and the source. Use ALWAYS when the user asks about Argentine banks or finance companies (non-performing loans, debtor classification, loans, deposits, assets, equity, results, ROE, ROA, leverage, liquidity, rates, credit or debit cards, savings accounts, payroll accounts, employees, branches, ATMs, chairman or shareholders), rankings or comparisons between entities (which bank has the most X, top 5 by Z, market share), how an indicator evolved, financial-system totals, INDEC inflation (headline, core, basket divisions, cumulative CPI) or payment instruments (transfers, cards, checks, ECHEQ, average ticket). If the figure is not published, it says so instead of making it up. Does not build dashboards.
+compatibility: Requires code execution with Python 3.8+ and network access to www.bcra.gob.ar and www.indec.gob.ar. pdftotext (poppler-utils) is only needed for series longer than 5 periods and for the institutional profile.
 ---
 
 # Oracle of the Argentine Financial System
 
-This skill answers questions about the Argentine financial system by fetching **real** data from official sources (BCRA and INDEC) at query time. It does not use cached data or model memory: for each question it downloads the latest published report, validates it is the most recent available version, extracts the exact figure and responds.
+Answers questions about the Argentine financial system with official BCRA and INDEC data fetched at query time. The scripts in `scripts/` download the latest publication, extract the figure and return JSON with value, period, unit and source.
+
+The scripts are shared with the Spanish version, so **command options and JSON keys are in Spanish**. Answer the user in their language. The key words you will see: `valor` value, `periodo` period ("YYYY-MM"), `unidad` unit, `desc` description, `datos` data, `fuente` source, `serie` series, `candidatos` candidates, `sin_dato_publicado` not published, `sin_acceso_red` no network access, `millones de pesos` millions of pesos, `cantidad` count.
 
 ## Golden rule: never fabricate
 
-This is the skill's most important rule and admits no exceptions:
+- **Only answer with data a script returned in this session.** Never from memory or with estimates.
+- **If the figure is not published, say so.** "The BCRA does not publish that figure" is worth more than an approximate number.
+- **Always cite period and source.** Example: "according to the BCRA (Financial Entities Information), as of July 2026".
+- **Separate direct from calculated figures.** If there was a calculation (market share, change, average ticket, irregular portfolio from debtor categories), say so and explain the formula in one line.
+- **`null` in the JSON means "not published"**, never zero.
 
-- **Only respond with data extracted from an official source in this same session.** Never answer from memory, general knowledge, or estimates.
-- **If the data is not in the reports, explicitly state that it is unavailable.** Do not approximate, fill in, or "give a ballpark". An honest "the BCRA does not publish that figure" is worth more than a made-up number.
-- **Always cite the data's period and source.** E.g.: "according to the BCRA Financial Entities report for March 2026". This makes the answer verifiable.
-- **Distinguish direct data from calculated data.** If the question requires a calculation (market share, ranking, variation), say so and briefly explain how it was derived.
-- **When in doubt whether a number is real or remembered, do not use it.** Go back to the source.
+## One command per question
 
-## Flow for answering a question
+Run from this skill's folder (paths are relative to this file). The scripts only use standard Python: **do not install anything**. Repeating a query in the same session is instant, because the scripts cache downloads for 2 hours.
 
-### 1. Identify what data is requested and where it lives
+**For common questions, do not read the references:** the command is in this table.
 
-Map the indicator in the question to its source. The full map is in `references/dictionary.md`, but broadly:
+| The question asks for | Command |
+|---|---|
+| Overview of a bank | `python3 scripts/consultar_entidad.py Galicia` |
+| One or more figures of a bank | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot pla roe` |
+| Cards, accounts, time deposits, employees | `python3 scripts/consultar_entidad.py Nacion --seccion adicional` |
+| Branches and ATMs (by province) | `python3 scripts/consultar_entidad.py Macro --seccion sucursales --provincias` |
+| Balance sheet or income statement | `python3 scripts/consultar_entidad.py Santander --seccion balance` |
+| Debtor classification (categories 1 to 5) | `python3 scripts/consultar_entidad.py BBVA --seccion cartera` |
+| Chairman, CEO, shareholders, auditor | `python3 scripts/consultar_entidad.py Galicia --seccion ficha` |
+| System or group totals | `python3 scripts/consultar_entidad.py sistema --campo irr_tot pla` (groups: `sistema` whole system, `publicos` public, `privados` private, `companias` finance companies, `top10` top 10 private banks) |
+| Ranking or comparison between entities | `python3 scripts/consultar_ranking.py irr_tot --top 5` |
+| Market share | `python3 scripts/consultar_ranking.py pla --top 10 --participacion` |
+| How many entities exceed a threshold | `python3 scripts/consultar_ranking.py irr_tot --mayor-que 10` |
+| Recent evolution (up to 5 periods) | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot --serie` |
+| Evolution over 6 months or more | `python3 scripts/consultar_historico.py Galicia --campo irr_tot --meses 12` |
+| Last month's inflation (with divisions) | `python3 scripts/consultar_ipc.py` |
+| Inflation for a month, a series or cumulative | `python3 scripts/consultar_ipc.py --mes 2026-06` · `--serie nucleo --meses 12` · `--acumulado 2026` · `--acumulado --desde 2025-07 --hasta 2026-06` |
+| Which basket division rose the most | `python3 scripts/consultar_ipc.py --ranking-divisiones` |
+| Payment instruments | `python3 scripts/consultar_pagos.py --buscar "tarjetas de crédito"` (search text is in Spanish; add `--meses 12` for the series; `--series` lists everything) |
 
-| Question topic | Source | Report |
-|---|---|---|
-| Credit/debit cards, savings accounts, payroll accounts, branches, ATMs, employees | BCRA | Additional Information (Entities) |
-| NPL, irregular portfolio, situations 1–5, provisions, portfolio quality | BCRA | Financial Entities (PDF) |
-| Balance sheet: assets, loans, deposits, equity | BCRA | Financial Entities (PDF) |
-| Ratios: ROE, ROA, leverage, rates, liquidity | BCRA | Financial Entities (PDF) |
-| Volume and amount of payments, transfers, average ticket, checks, ECHEQ | BCRA | Monthly Retail Payments Report (XLSX) |
-| Inflation, CPI, price changes, basket, divisions | INDEC | National CPI (XLS) |
+If the question mixes sources (for example, average ticket against inflation), run the needed commands **in parallel** and combine the results.
 
-Read `references/sources.md` for exact URLs and download pitfalls (critical — see below).
+### Most used fields
 
-### 2. Download the latest available version
+Full list: `python3 scripts/consultar_entidad.py --campos` or `references/dictionary.md`.
 
-**This step is mandatory for every query.** Do not assume a previously downloaded file is still current. Download the corresponding source and **validate it is the most recent** by following the rules in `references/sources.md`.
+- **NPL and portfolio quality (monthly, %):** `irr_tot` total NPL · `irr_cons` consumer · `irr_com` commercial · `irr_priv` private sector · `prev_irr` provision coverage · `tf_s1`…`tf_s5` debtor categories · `tf_irregular` categories 3+4+5.
+- **Profitability and other ratios (monthly):** `roe` · `roa` · `apalancamiento` leverage (times) · `tasa_prest` lending rate · `tasa_dep` deposit rate · `liq_tit_cot` liquidity · `dep_empleado` deposits per employee.
+- **Balance sheet (monthly, millions of pesos):** `bA` assets · `bPr` loans · `bDe` deposits · `bPN` equity · `bCA` savings-account balances · `bPF` time deposits · `bRes` year-to-date result.
+- **Additional information (quarterly, counts):** `pla` credit cards · `tit` cardholders · `deb` debit cards · `cah` savings accounts · `cc` checking accounts · `emp` employees.
+- **Monthly, counts:** `remu` payroll accounts · `sucursales` branches · `cajeros` ATMs.
 
-Critical pitfalls the skill must handle (full detail in `references/sources.md`):
-- **INDEC:** the file is named by its **publication month**, not by the data month. The June CPI is published in July → file `sh_ipc_07_26.xls`. Try from the current month backwards until a valid file is found (~2.3 MB; future months return a ~36 KB placeholder).
-- **BCRA large PDF (>5 MB):** Drive tools fail. Use `wget` directly + `pdftotext -layout`.
-- **BCRA Payments:** the URL slug alternates between two patterns; try both.
+## How to read the script output
 
-To find the latest available period, try the most recent month and work backwards until the download succeeds.
+- `datos.<field>.valor` and `.periodo` ("YYYY-MM"): the figure and the month it refers to.
+- `candidatos`: the name is ambiguous. Ask the user which one they mean, showing the candidates.
+- `sugerencias_por_parecido` with the error "no figura en la nómina" (not on the list): the entity is not a registered bank or finance company (for example, a digital wallet). Say so. Do not pick a suggestion on your own.
+- `sin_dato_publicado` or `sin_dato_en_el_periodo`: the BCRA does not publish that figure for that entity. Say so.
+- `sin_acceso_red: true`: the environment cannot reach the sources. Ask the user to allow network access to `www.bcra.gob.ar` and `www.indec.gob.ar` in their code-execution settings, or to upload the file. Never answer from memory.
+- Error "Falta pdftotext" (pdftotext missing): only affects `consultar_historico.py` and `--seccion ficha`. If the environment allows it, install it (`apt-get install -y poppler-utils`). If not, say that query is not available and offer the 5 periods from `--serie`.
 
-### 3. Extract the data with the scripts
+## Answer format
 
-Use the corresponding extractor in `scripts/`:
-- `consultar_entidad.py` — ratios, balance sheet, NPL and portfolio quality for one bank (or all) from the BCRA PDF.
-- `consultar_adicional.py` — cards, accounts, branches, ATMs, employees from Additional Information.
-- `consultar_pagos.py` — payment instruments from the BCRA XLSX.
-- `consultar_ipc.py` — inflation from the INDEC XLS.
-- `consultar_ranking.py` — for analytical questions that scan all banks.
+Give the figure with its unit, the period and the source. If calculated, add how it was derived.
 
-Each script receives the already-downloaded source and returns parsed data. See `references/queries.md` for how to call them and how to resolve each question type.
+> Banco Galicia had **4,930,958 credit cards** (plastics) as of **June 2026**, according to the BCRA Financial Entities Information.
 
-### 4. Respond
+> Galicia holds **12.9%** of the system's credit cards as of June 2026 (4.93 million out of 38.1 million). *Market share calculated over the whole financial system.*
 
-Response format:
-- **The figure**, with its unit.
-- **The period** it refers to.
-- **The official source**.
-- If calculated, **how it was derived**.
+> The BCRA does not publish the number of customers per bank. The closest figures it publishes are savings accounts (10,607,086 at Galicia as of June 2026) and credit-card holders.
 
-**Example — direct figure:**
-> Banco Galicia had **4,383,666 credit card plastics** issued as of **March 2026**, according to the BCRA Additional Information on Financial Entities.
+*(The numbers in these examples are real as of the stated date; in each query use the ones the script returns.)*
 
-**Example — calculated figure:**
-> Banco Galicia holds a **9.3% market share** of debit cards as of March 2026 (7.5M bank cards out of 81.7M system-wide). *Market share calculated over the total of the 45 entities that report debit cards.*
+## Pitfalls that change the answer
 
-**Example — unavailable data:**
-> The BCRA does not publish the number of customers per branch in its Financial Entities reports. The closest available figures are branch count (321 for Galicia as of March 2026) and employees (6,025), but not the customers-per-branch ratio.
-
-## Question types
-
-### Point queries (one bank, one indicator)
-"How many savings accounts does Banco Nación have?" → download the source, extract the figure for that bank, respond.
-
-### Analytical queries (comparisons, rankings, trends)
-"Which bank has the highest NPL?", "Top 5 by branch count?", "How did Galicia's NPL evolve over the past year?" → these require iterating over **all** banks or **multiple periods**. Use `consultar_ranking.py`. Warn the user it may take a bit longer since it processes the full report. Details in `references/queries.md`.
-
-### Cross-source queries (mixing sources)
-"Did the average credit card ticket beat inflation last month?" → download Payments (BCRA) and CPI (INDEC), extract both, compare. Note that they are two different sources and may have different publication lags.
-
-## Bank identification
-
-Names vary across reports. Use the mapping in `references/dictionary.md` (section "Entity identification"). Common cases:
-- User says "Galicia" → "BANCO DE GALICIA Y BUENOS AIRES S.A.U." (code 7).
-- "Nación" → "BANCO DE LA NACION ARGENTINA" (code 11).
-- "Provincia" → "BANCO DE LA PROVINCIA DE BUENOS AIRES".
-- Variants with accents, "S.A.", "S.A.U.", branches, etc. Search flexibly (case- and accent-insensitive); if ambiguous, ask the user which candidate they mean.
-
-If the bank does not exist in the report, say so: "I cannot find an entity with that name in the BCRA report. The most similar entities are: [list]."
+- **Periods differ by section.** Balance sheet, ratios, NPL, branches and payroll accounts are monthly. Cards, accounts and employees are quarterly: their latest period may be earlier. If an answer mixes figures, give each one's period.
+- **Units.** The balance sheet is in millions of current pesos (40,325,296.7 million = 40.3 trillion pesos). Debtor classification amounts are also in millions. Ratios and NPL are in %.
+- **Nominal values.** When comparing amounts over time, warn that they are not inflation-adjusted. If needed, adjust with `consultar_ipc.py` and label it as a calculation.
+- **NPL rankings.** Small or niche banks usually top them. If the question is about systemic relevance, use `--entre-mayores 20` (only among the 20 largest by assets) or offer it.
+- **History:** `consultar_historico.py` goes back to 2014 with every field. For 2011-2013 the NPL ratios are missing; there is no history before 2011. It only works for entities that exist today.
+- **"Sistema"** includes banks and finance companies. Rankings only include banks (public and private) unless `--grupo todas` or `--grupo companias` is used.
+- **Aliases.** "Provincia" is Banco de la Provincia de Buenos Aires. "Nación" is Banco de la Nación Argentina. "Naranja X" is Naranja Digital Compañía Financiera. For any other doubt, the script returns candidates.
 
 ## What this skill does NOT do
 
-- **No dashboards or HTML files.** If the user asks for a dashboard, clarify that this skill only queries and answers data; a separate skill/project handles dashboards.
-- **No data outside the sources.** Exchange rates, stocks, rates from other countries, news: out of scope. Respond "that is not in the sources I query (BCRA and INDEC)".
-- **No fabrication.** See the golden rule.
+- No dashboards, charts or HTML: it only queries and answers.
+- No data outside these sources: exchange rates, stocks, posted time-deposit rates or news. Say "that is not in the sources I query (BCRA and INDEC)".
+- No fabrication. See the golden rule.
 
-## Environment requirements
+## References (read only if needed)
 
-This skill requires a code-execution environment (`wget`, `python3` with `xlrd`/`openpyxl`, `pdftotext`). Without it, Claude can read the instructions but cannot execute downloads or extractions. Install dependencies if missing:
-```bash
-pip install xlrd openpyxl --break-system-packages
-```
-
-## Reference files
-
-- `references/sources.md` — official URLs, download patterns, and all known pitfalls. **Read before every download.**
-- `references/dictionary.md` — what each field is, which source it comes from, units, how it is calculated, and entity identification. **Read to map questions to data.**
-- `references/queries.md` — recipes for resolving each question type (point, analytical, cross-source), with examples.
+- `references/dictionary.md`: every field, unit, frequency and which calculations are possible. Read it if the question uses a concept not listed above.
+- `references/queries.md`: recipes for analytical, evolution, cross-source and "data does not exist" questions.
+- `references/sources.md`: URLs, the format of each source, known pitfalls and how to adapt if the BCRA or INDEC change something. Read it only if a script fails.

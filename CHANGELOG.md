@@ -2,6 +2,19 @@
 
 Cambios de los skills `bcra-oraculo` (español) y `bcra-oracle-en` (inglés). Las versiones siguen [versionado semántico](https://semver.org/lang/es/) según la política de [`docs/CONTRATO.md`](docs/CONTRATO.md): un cambio en una firma pública de `bcra_comun.py`, en una clave de campo o en una clave del JSON de los scripts sube la versión mayor.
 
+## [2.1.1] — 2026-10-25
+
+Parche: no cambian firmas, claves de campo ni claves del JSON. Quien tenga una copia de `bcra_comun.py` (como estratega-bancario) puede reemplazarla por la de esta release sin tocar nada más.
+
+### Corregido
+
+- **Historia de las entidades que cambiaron de nombre.** `paginas_entidad_pdf` buscaba la entidad por su nombre actual en el índice del PDF, así que `consultar_historico.py` no encontraba al Santander (antes Santander Río) en los PDF anteriores a junio de 2022 ni al BBVA (antes BBVA Francés) en los anteriores a diciembre de 2019. Ahora, si el nombre actual no está en el índice, ubica la entidad por su código: la primera página de cada entidad empieza con `CODIGO - NOMBRE`. Esa búsqueda lee el PDF entero (unos 2 s) y el resultado queda en la caché, junto al PDF. `consultar_panel.py` ya ubicaba las entidades por código y no cambia.
+- **Trimestre recién cerrado en `consultar_historico.py`.** Pedir solo un mes de cierre de trimestre (`--desde 2019-12 --hasta 2019-12`) daba `null` en casi todos los campos trimestrales (`pla`, `tit`, `emp`, …), porque el PDF de ese mes trae el trimestre vacío. Ahora, si el último PDF leído es de un cierre de trimestre y le faltan esos datos, el script lee también el PDF del mes siguiente, que los completa. Si todavía no está publicado, la `nota` del campo lo dice.
+
+### Agregado
+
+- `tools/verificar.py` controla el Santander en 2021-12, el BBVA en 2018-12 y la información trimestral del Galicia a 2019-12 pidiendo solo ese mes.
+
 ## [2.1.0] — 2026-10-25
 
 Agrega la construcción de paneles a la capa de datos. Compatible con la 2.0.0: no cambia ninguna firma, clave de campo ni clave del JSON existente.
@@ -78,5 +91,7 @@ Primera versión publicada. La versión en inglés (`bcra-oracle-en`) se agregó
 - Referencias: `fuentes.md`, `diccionario.md` (31 campos) y `consultas.md`.
 - Paquete `bcra-oraculo.skill`.
 
+[2.1.1]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.1.1
+[2.1.0]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.1.0
 [2.0.0]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.0.0
 [1.0.0]: https://github.com/AGVD-CODE/BCRA-Oracle/tree/5577537

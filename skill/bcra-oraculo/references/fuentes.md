@@ -59,12 +59,13 @@ Lo usan `consultar_historico.py` (series de más de 5 períodos) y `consultar_en
 - **Revisiones:** el valor de un mes puede cambiar entre ediciones del PDF. Si varios PDF descargados traen el mismo mes, el script usa el más reciente.
 - **Mes no publicado:** el servidor responde 404 con una página HTML. El script valida que el archivo empiece con `%PDF`.
 - **Numeración de páginas:** la página impresa en el índice y la página del archivo difieren entre 0 y 3 según el mes. El script busca la página que empieza con el código de la entidad. Para los grupos mide esa diferencia con una entidad del mismo PDF.
+- **Entidades que cambiaron de nombre:** el índice usa el nombre de ese momento (Santander Río, BBVA Francés). Si el nombre actual no está en el índice, el script busca el código de la entidad en el documento entero: unos 2 s la primera vez, y el resultado queda en la caché.
 
 **Trampas:**
 - **Columnas pegadas.** A veces dos números quedan separados por un solo espacio. El parser toma los valores token por token desde el final de la línea. Si una fila tiene menos valores que períodos, la descarta en lugar de adivinar.
 - **Millones sin separador.** Los PDF más viejos imprimen `1477.466,3` en lugar de `1.477.466,3`. El parser acepta los dos formatos.
 - **Texto lateral.** El nombre de la entidad aparece en vertical en el margen y se mezcla con algunas líneas. Se ignora.
-- **Trimestre reciente incompleto.** En el PDF de un mes, el último trimestre de "Información adicional" puede tener casi todo en "---". El PDF del mes siguiente lo completa.
+- **Trimestre reciente incompleto.** En el PDF de un mes, el último trimestre de "Información adicional" puede tener casi todo en "---". El PDF del mes siguiente lo completa: si el último PDF leído es de un cierre de trimestre y le faltan esos datos, `consultar_historico.py` lee también el del mes siguiente.
 - **Requiere `pdftotext`** (paquete poppler-utils). No es un paquete de pip.
 
 ---

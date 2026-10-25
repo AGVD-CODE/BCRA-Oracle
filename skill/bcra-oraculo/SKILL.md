@@ -82,7 +82,7 @@ Dar el dato con su unidad, el período y la fuente. Si es calculado, agregar có
 - **Unidades.** El balance está en millones de pesos corrientes (40.325.296,7 millones = 40,3 billones de pesos; en Argentina, 1 billón = 1 millón de millones). La situación de deudores también está en millones. Indicadores y mora en %.
 - **Valores nominales.** Para comparar montos en el tiempo, avisar que no están ajustados por inflación. Si hace falta, ajustar con `consultar_ipc.py` y aclararlo como cálculo.
 - **Rankings de mora.** Los bancos chicos o de nicho suelen encabezarlos. Si la pregunta busca relevancia sistémica, usar `--entre-mayores 20` u ofrecerlo.
-- **Historia:** `consultar_historico.py` llega hasta 2014 con todos los campos. Para 2011-2013 faltan los indicadores de mora; antes de 2011 no hay historia. Solo funciona con entidades vigentes hoy.
+- **Historia:** `consultar_historico.py` llega hasta 2014 con todos los campos. Para 2011-2013 faltan los indicadores de mora; antes de 2011 no hay historia. Solo funciona con entidades vigentes hoy; las que cambiaron de nombre (Santander Río, BBVA Francés) se encuentran igual.
 - **"Sistema"** incluye bancos y compañías financieras. Los rankings usan solo bancos (públicos y privados), salvo que se pida `--grupo todas` o `--grupo companias`.
 - **Alias.** "Provincia" es el Banco de la Provincia de Buenos Aires. "Nación" es el Banco de la Nación Argentina. "Naranja X" es Naranja Digital Compañía Financiera. Ante cualquier otra duda, el script devuelve candidatos.
 

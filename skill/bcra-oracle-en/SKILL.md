@@ -84,7 +84,7 @@ Give the figure with its unit, the period and the source. If calculated, add how
 - **Units.** The balance sheet is in millions of current pesos (40,325,296.7 million = 40.3 trillion pesos). Debtor classification amounts are also in millions. Ratios and NPL are in %.
 - **Nominal values.** When comparing amounts over time, warn that they are not inflation-adjusted. If needed, adjust with `consultar_ipc.py` and label it as a calculation.
 - **NPL rankings.** Small or niche banks usually top them. If the question is about systemic relevance, use `--entre-mayores 20` (only among the 20 largest by assets) or offer it.
-- **History:** `consultar_historico.py` goes back to 2014 with every field. For 2011-2013 the NPL ratios are missing; there is no history before 2011. It only works for entities that exist today.
+- **History:** `consultar_historico.py` goes back to 2014 with every field. For 2011-2013 the NPL ratios are missing; there is no history before 2011. It only works for entities that exist today; renamed ones (Santander Río, BBVA Francés) are found too.
 - **"Sistema"** includes banks and finance companies. Rankings only include banks (public and private) unless `--grupo todas` or `--grupo companias` is used.
 - **Aliases.** "Provincia" is Banco de la Provincia de Buenos Aires. "Nación" is Banco de la Nación Argentina. "Naranja X" is Naranja Digital Compañía Financiera. For any other doubt, the script returns candidates.
 

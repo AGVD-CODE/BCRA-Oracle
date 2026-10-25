@@ -59,8 +59,7 @@ Hasta 5 períodos salen de la API; para más, `consultar_historico.py` lee los P
 - ¿Cuánto creció en términos reales el patrimonio del Banco Macro en los últimos 24 meses? *(variación nominal ajustada con el IPC: cálculo propio)*
 - ¿Cómo cambió el ROE del sistema año por año desde 2014?
 - ¿Cuántas tarjetas de crédito tenía el Macro a fin de cada año desde 2019?
-
-Las entidades que cambiaron de nombre no se encuentran en los PDF anteriores al cambio: por ejemplo, el Santander (antes Santander Río) en los PDF anteriores a junio de 2022 y el BBVA (antes BBVA Francés) en los anteriores a diciembre de 2019.
+- ¿Cómo evolucionó el activo del Santander desde 2018? *(hasta 2022 se llamaba Santander Río: se encuentra igual)*
 
 ## Consultas de inflación (INDEC)
 

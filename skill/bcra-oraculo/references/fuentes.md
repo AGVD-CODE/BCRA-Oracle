@@ -65,7 +65,7 @@ Lo usan `consultar_historico.py` (series de más de 5 períodos) y `consultar_en
 - **Columnas pegadas.** A veces dos números quedan separados por un solo espacio. El parser toma los valores token por token desde el final de la línea. Si una fila tiene menos valores que períodos, la descarta en lugar de adivinar.
 - **Millones sin separador.** Los PDF más viejos imprimen `1477.466,3` en lugar de `1.477.466,3`. El parser acepta los dos formatos.
 - **Texto lateral.** El nombre de la entidad aparece en vertical en el margen y se mezcla con algunas líneas. Se ignora.
-- **Trimestre reciente incompleto.** En el PDF de un mes, el último trimestre de "Información adicional" puede tener casi todo en "---". El PDF del mes siguiente lo completa: si el último PDF leído es de un cierre de trimestre y le faltan esos datos, `consultar_historico.py` lee también el del mes siguiente.
+- **Trimestre reciente incompleto.** En el PDF de un mes, el último trimestre de "Información adicional" puede tener casi todo en "---". El PDF del mes siguiente lo completa: si el último PDF leído es de un cierre de trimestre y le faltan esos datos, `consultar_historico.py` y `consultar_panel.py` leen también el del mes siguiente.
 - **Requiere `pdftotext`** (paquete poppler-utils). No es un paquete de pip.
 
 ---

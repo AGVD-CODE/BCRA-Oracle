@@ -2,7 +2,7 @@
 
 `bcra-oraculo` es la **capa de datos** de esta biblioteca de skills: descarga las publicaciones oficiales del BCRA y del INDEC, las normaliza y devuelve cada dato con una clave estable, su período, su unidad y su fuente. Los skills de análisis (por ejemplo, [estratega-bancario](https://github.com/AGVD-CODE/Banking-Metrics-Analyst)) se construyen encima y no vuelven a parsear las fuentes.
 
-Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.1.1** (`bcra_comun.VERSION`). Viaja dentro del skill (`references/contrato.md`), así que está disponible donde esté instalado.
+Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.1.2** (`bcra_comun.VERSION`). Viaja dentro del skill (`references/contrato.md`), así que está disponible donde esté instalado.
 
 ## Índice
 1. Dos formas de usarlo
@@ -147,7 +147,7 @@ Texto de las 4 páginas de una entidad o grupo dentro del PDF.
 - **Salida:** `(texto, pagina_inicial)`: el texto de `pdftotext -layout` de esas páginas (separadas por `\f`) y el número de página del archivo donde empiezan.
 - **Errores:** `ErrorFuente` si falta `pdftotext`, si no se lee el índice o si la entidad no figura en ese PDF (por ejemplo, una entidad que todavía no existía).
 - **Entidades que cambiaron de nombre:** se encuentran también en los PDF anteriores al cambio (Santander, antes Santander Río; BBVA, antes BBVA Francés), porque la entidad se identifica por código: la primera página de cada una empieza con `CODIGO - NOMBRE`. Si el nombre actual no figura en el índice de ese PDF, la función lee el documento entero para ubicar el código (unos 2 s); el resultado queda en la caché, junto al PDF. Desde la 2.1.1.
-- **Trimestre recién cerrado:** en el PDF de un mes de cierre de trimestre, la información adicional de ese trimestre suele venir en `---` (`None`). La completa el PDF del mes siguiente. `consultar_historico.py` lo lee solo cuando hace falta; quien use esta función directamente tiene que hacer lo mismo.
+- **Trimestre recién cerrado:** en el PDF de un mes de cierre de trimestre, la información adicional de ese trimestre suele venir en `---` (`None`). La completa el PDF del mes siguiente. `consultar_historico.py` y `consultar_panel.py` (desde la 2.1.2) lo leen solos cuando hace falta; quien use esta función directamente tiene que hacer lo mismo.
 
 ### `normalizar_pdf(texto)`
 

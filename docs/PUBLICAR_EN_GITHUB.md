@@ -108,7 +108,7 @@ git add .
 git commit -m "Descripción del cambio"
 git push -u origin nombre-del-cambio
 gh pr create --base main --fill
-gh pr merge --merge
+gh pr merge --merge --delete-branch
 ```
 
 ### 5. Crear la release con los dos paquetes
@@ -119,7 +119,7 @@ git pull
 gh release create v2.0.1 bcra-oraculo.skill bcra-oracle-en.skill --title "v2.0.1" --notes "Qué cambió (copiar del CHANGELOG)"
 ```
 
-`gh release create` crea también el tag `v2.0.1`. Los skills que incluyen una copia de `bcra_comun.py` (como estratega-bancario) la toman de una release.
+`gh release create` crea también el tag `v2.0.1`. Los skills que dependen de este (como estratega-bancario) usan el `bcra-oraculo` instalado y controlan su versión: con un parche o una versión menor no hay que cambiarles nada.
 
 ## Consejo
 

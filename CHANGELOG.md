@@ -2,6 +2,28 @@
 
 Cambios de los skills `bcra-oraculo` (español) y `bcra-oracle-en` (inglés). Las versiones siguen [versionado semántico](https://semver.org/lang/es/) según la política de [`docs/CONTRATO.md`](docs/CONTRATO.md): un cambio en una firma pública de `bcra_comun.py`, en una clave de campo o en una clave del JSON de los scripts sube la versión mayor.
 
+## [2.1.0] — 2026-10-25
+
+Agrega la construcción de paneles a la capa de datos. Compatible con la 2.0.0: no cambia ninguna firma, clave de campo ni clave del JSON existente.
+
+### Por qué
+
+- **Los skills de análisis necesitan muchas entidades × muchos meses.** Con `consultar_historico.py` eso es una llamada por entidad, y cada una vuelve a leer los PDF. estratega-bancario había resuelto esto con su propio script (`panel_bcra.py`), que importaba funciones internas del módulo. Ahora vive acá, en la capa de datos, y cualquier skill lo puede usar sin importar nada.
+- **El contrato tiene que viajar con el skill.** Antes estaba solo en `docs/` del repositorio y no llegaba a donde el skill está instalado.
+
+### Agregado
+
+- `scripts/consultar_panel.py`: panel de muchas entidades × meses × campos en un CSV ancho (`periodo`, `codigo`, `entidad`, `tipo` y un campo por columna) y un JSON con la cobertura, las unidades y los avisos.
+  - Siempre incluye los agregados oficiales: sistema, públicos, privados y 10 primeros privados.
+  - Convierte cada PDF mensual una sola vez para todas las entidades: 5 años de los ~60 bancos en ~25 s, y 10 años de 25 bancos en ~50 s.
+  - `--historicas` suma las entidades que reportaron en el período y ya no están vigentes, como Banco BMA (ex Itaú), código 259, o HSBC / Banco GGAL, código 150, con su último mes de dato, para armar series pro forma. Si una deja de reportar entre dos PDF del plan, baja los PDF intermedios para no perder sus últimos meses.
+- `references/contrato.md` en los dos skills: el contrato (antes `docs/CONTRATO.md`, que ahora apunta acá). Suma `consultar_panel.py` a la sección 4 y describe cómo usa este skill estratega-bancario desde su 1.1.0.
+- `tools/verificar.py`: valores de control de Galicia (abril de 2026) leídos con `consultar_panel.py`, y prueba en vivo del panel por API.
+
+### Para los skills que dependen
+
+Nada que cambiar. Para obtener paneles, pueden reemplazar código propio por `consultar_panel.py` y exigir `VERSION` ≥ 2.1.0.
+
 ## [2.0.0] — 2026-10-25
 
 Reescritura completa. Es la versión que se usa en Claude y no se había subido al repositorio.

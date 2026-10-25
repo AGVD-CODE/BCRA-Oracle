@@ -37,6 +37,7 @@ Ejecutar desde la carpeta de este skill (las rutas son relativas a este archivo)
 | Cuántas entidades superan un umbral | `python3 scripts/consultar_ranking.py irr_tot --mayor-que 10` |
 | Evolución reciente (hasta 5 períodos) | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot --serie` |
 | Evolución de 6 meses o más | `python3 scripts/consultar_historico.py Galicia --campo irr_tot --meses 12` |
+| Panel de muchas entidades y meses en un CSV (para análisis o para otro skill) | `python3 scripts/consultar_panel.py --meses 24 --salida panel.csv` (`--top 20`, `--entidades Galicia Macro`, `--historicas` para sumar las entidades ya no vigentes) |
 | Inflación del último mes (con rubros) | `python3 scripts/consultar_ipc.py` |
 | Inflación de un mes, una serie o acumulada | `python3 scripts/consultar_ipc.py --mes 2026-06` · `--serie nucleo --meses 12` · `--acumulado 2026` · `--acumulado --desde 2025-07 --hasta 2026-06` |
 | Qué rubro subió más | `python3 scripts/consultar_ipc.py --ranking-divisiones` |
@@ -96,3 +97,4 @@ Dar el dato con su unidad, el período y la fuente. Si es calculado, agregar có
 - `references/diccionario.md`: todos los campos, unidades, frecuencia y qué cálculos se pueden hacer. Leer si la pregunta usa un concepto que no está en la lista de arriba.
 - `references/consultas.md`: recetas para preguntas analíticas, de evolución, cruzadas y de "dato inexistente".
 - `references/fuentes.md`: URLs, formato de cada fuente, trampas conocidas y cómo adaptarse si el BCRA o el INDEC cambian algo. Leer solo si un script falla.
+- `references/contrato.md`: qué puede usar otro skill de este (funciones, scripts, formato de salida y política de versiones). Leer si se construye un skill encima de este.

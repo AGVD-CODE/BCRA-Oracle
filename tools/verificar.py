@@ -20,12 +20,15 @@ Qué comprueba:
   información adicional de Galicia a marzo de 2026, situación de deudores de
   Galicia y activo de los bancos (públicos + privados).
 - API frente a PDF: Galicia, todos los campos de los meses que comparten.
-- Funcionamiento en vivo de los 6 scripts: resumen, totales del sistema, nombre
-  ambiguo, ranking, historia, IPC, medios de pago y ficha institucional.
+- Los mismos valores de Galicia leídos con consultar_panel.py, y que el panel traiga
+  los agregados oficiales.
+- Funcionamiento en vivo de los 7 scripts: resumen, totales del sistema, nombre
+  ambiguo, ranking, historia, panel, IPC, medios de pago y ficha institucional.
 
 Si falta pdftotext: brew install poppler (macOS) o apt-get install -y poppler-utils.
 """
 import argparse
+import csv
 import filecmp
 import json
 import os
@@ -33,6 +36,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -211,6 +215,35 @@ def control_pdf_galicia():
                   BANCOS_ACTIVO_ABRIL_2026)
 
 
+def control_panel():
+    """Los mismos valores de control de Galicia, leídos con consultar_panel.py (desde la 2.1.0)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = os.path.join(tmp, 'panel.csv')
+        d, t = correr('consultar_panel.py', '--entidades', 'Galicia', '--desde', '2026-04',
+                      '--hasta', '2026-04', '--modo', 'pdf', '--campos', *GALICIA_ABRIL_2026,
+                      '--salida', ruta)
+        titulo('Valores de control: Galicia en el PDF de abril de 2026, con consultar_panel.py '
+               '(%.1f s)' % t)
+        err = error_de(d)
+        filas = {}
+        if not err:
+            with open(ruta, newline='', encoding='utf-8') as fh:
+                for r in csv.DictReader(fh):
+                    filas[(r['periodo'], r['codigo'])] = r
+            if ('2026-04', '7') not in filas:
+                err = 'el CSV no tiene la fila de Galicia en 2026-04'
+        if err:
+            fallar_todos('panel: Galicia', GALICIA_ABRIL_2026, err)
+            return
+        r = filas[('2026-04', '7')]
+        for k, v in GALICIA_ABRIL_2026.items():
+            controlar('panel: Galicia %s (2026-04)' % k, float(r[k]) if r[k] else None, v)
+        grupos = ('AAA00', 'AAA10', 'AAA20', 'AAA50')
+        faltan = [g for g in grupos if ('2026-04', g) not in filas]
+        registrar('panel: incluye los agregados (sistema, públicos, privados, 10 primeros)',
+                  not faltan, ', '.join(faltan))
+
+
 def control_ipc():
     titulo('Valores de control: IPC nacional del INDEC')
     for mes, esperado in IPC_MENSUAL.items():
@@ -308,6 +341,13 @@ def en_vivo():
               len([v for v in serie.values() if v is not None]) == 6,
               error_de(d) or '%.1f s, %s a %s' % (t, d.get('desde'), d.get('hasta')))
 
+    with tempfile.TemporaryDirectory() as tmp:
+        d, t = correr('consultar_panel.py', '--modo', 'api', '--entidades', 'Galicia', 'Macro',
+                      '--campos', 'bA', 'irr_tot', '--salida', os.path.join(tmp, 'p.csv'))
+    registrar('consultar_panel.py: foto por API de Galicia y Macro',
+              not error_de(d) and d.get('entidades') == 2 and d.get('periodos', 0) >= 4,
+              error_de(d) or '%.1f s, %s a %s' % (t, d.get('desde'), d.get('hasta')))
+
     d, t = correr('consultar_ipc.py')
     registrar('consultar_ipc.py: último mes con divisiones',
               len(d.get('datos', {})) >= 12, error_de(d) or '%.1f s, mes %s' % (t, d.get('mes')))
@@ -341,6 +381,7 @@ def main():
                   '' if hay else 'instalar: brew install poppler (macOS) o '
                                  'apt-get install -y poppler-utils')
         control_pdf_galicia()
+        control_panel()
         control_ipc()
         control_api_frente_a_pdf()
         en_vivo()

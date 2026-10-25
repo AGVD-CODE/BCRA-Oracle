@@ -19,6 +19,9 @@ Qué comprueba:
 - Valores de control heredados de la v1, del mismo PDF de abril de 2026:
   información adicional de Galicia a marzo de 2026, situación de deudores de
   Galicia y activo de los bancos (públicos + privados).
+- Historia: Santander (2021-12) y BBVA (2018-12) en PDF de cuando tenían otro
+  nombre, y la información trimestral de Galicia pidiendo solo un cierre de
+  trimestre (2019-12), que completa el PDF del mes siguiente.
 - API frente a PDF: Galicia, todos los campos de los meses que comparten.
 - Los mismos valores de Galicia leídos con consultar_panel.py, y que el panel traiga
   los agregados oficiales.
@@ -59,6 +62,14 @@ GALICIA_MARZO_2026_ADICIONAL = {'pla': 4383666, 'tit': 3094662, 'deb': 7533250,
 GALICIA_ABRIL_2026_CARTERA = {'tf_s1': 89.16, 'tf_s3': 2.62, 'tf_s4': 4.62, 'tf_s5': 0.85}
 # "Sistema: 59 bancos, activo total ≈ 313,8 billones de pesos (abril 2026)"
 BANCOS_ACTIVO_ABRIL_2026 = 313838752.9
+
+# Entidades con otro nombre en el PDF de ese mes (Santander Río, BBVA Francés). Los
+# mismos valores figuran en PDF posteriores, que ya usan el nombre actual (202206e, 201912e).
+RENOMBRADAS = [('Santander', '2021-12', {'bA': 1449854.4, 'irr_tot': 3.63}),
+               ('BBVA', '2018-12', {'bA': 354667.4, 'irr_tot': 1.93})]
+# Cierre de trimestre: el PDF de diciembre de 2019 trae estos campos en '---' y el de
+# enero de 2020 los completa
+GALICIA_DICIEMBRE_2019_ADICIONAL = {'pla': 7641410, 'tit': 3807884, 'emp': 6118}
 
 resultados = []
 entorno = dict(os.environ)
@@ -213,6 +224,30 @@ def control_pdf_galicia():
     else:
         controlar('activo de los bancos, públicos + privados (2026-04)', round(total, 1),
                   BANCOS_ACTIVO_ABRIL_2026)
+
+
+def control_historia():
+    titulo('Historia: entidades que cambiaron de nombre')
+    for entidad, mes, esperados in RENOMBRADAS:
+        d, t = correr('consultar_historico.py', entidad, '--campo', *esperados,
+                      '--desde', mes, '--hasta', mes)
+        err = error_de(d) or '; '.join(d.get('errores_fuente', []))
+        if err:
+            fallar_todos('%s (%s)' % (entidad, mes), esperados, err)
+            continue
+        for k, v in esperados.items():
+            controlar('%s %s (%s)' % (entidad, k, mes), d['datos'][k]['serie'].get(mes), v)
+
+    titulo('Historia: cierre de trimestre pedido solo')
+    d, t = correr('consultar_historico.py', 'Galicia', '--campo', *GALICIA_DICIEMBRE_2019_ADICIONAL,
+                  '--desde', '2019-12', '--hasta', '2019-12')
+    err = error_de(d) or '; '.join(d.get('errores_fuente', []))
+    if err:
+        fallar_todos('Galicia (2019-12)', GALICIA_DICIEMBRE_2019_ADICIONAL, err)
+    else:
+        for k, v in GALICIA_DICIEMBRE_2019_ADICIONAL.items():
+            controlar('Galicia %s (2019-12, trimestral)' % k,
+                      d['datos'][k]['serie'].get('2019-12'), v)
 
 
 def control_panel():
@@ -381,6 +416,7 @@ def main():
                   '' if hay else 'instalar: brew install poppler (macOS) o '
                                  'apt-get install -y poppler-utils')
         control_pdf_galicia()
+        control_historia()
         control_panel()
         control_ipc()
         control_api_frente_a_pdf()

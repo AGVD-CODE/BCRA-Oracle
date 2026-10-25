@@ -11,6 +11,8 @@ Fuentes:
 - PDF mensual "Información de Entidades Financieras" (solo para series históricas
   y para la ficha institucional: directivos, accionistas, auditor). Requiere
   pdftotext (paquete poppler-utils).
+
+VERSION sigue semver: si cambia una firma pública o una clave de campo, sube la mayor.
 """
 import concurrent.futures as cf
 import decimal
@@ -29,6 +31,8 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+
+VERSION = "2.0.0"
 
 BCRA = 'https://www.bcra.gob.ar'
 API = BCRA + '/api/endpoints/'

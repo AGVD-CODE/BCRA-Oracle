@@ -12,6 +12,9 @@ Fuentes:
   2014. Requiere pdftotext. Un PDF se convierte una sola vez para todas las entidades.
 - modo auto (por defecto): pdf si el rango pedido excede lo que trae la API.
 
+Si el último PDF es de un mes de cierre de trimestre y trae vacía la información
+adicional de ese trimestre, se lee también el del mes siguiente, que la completa.
+
 Uso:
     python3 consultar_panel.py --meses 36 --salida panel.csv                 # todos los bancos, 3 años
     python3 consultar_panel.py --top 20 --desde 2022-01 --salida panel.csv   # 20 mayores bancos por activo
@@ -25,7 +28,7 @@ bancos (por defecto: públicos + privados), privados, publicos, companias, todas
 Siempre se agregan los agregados oficiales (sistema AAA00, publicos AAA10,
 privados AAA20, top10 AAA50) con tipo "grupo".
 
-Salida (contrato, ver docs/CONTRATO.md):
+Salida (contrato, ver references/contrato.md):
 - CSV ancho: periodo (YYYY-MM), codigo, entidad, tipo (publico | privado |
   compania | grupo | historica) y una columna por campo (claves de
   references/diccionario.md). Celda vacía = sin dato publicado.
@@ -77,6 +80,11 @@ def meses_entre(desde, hasta):
         out.append(m)
         m = bc.mes_anterior(m)
     return out[::-1]
+
+
+def mes_siguiente(ym):
+    a, m = int(ym[:4]), int(ym[5:7])
+    return '%04d-%02d' % (a + m // 12, m % 12 + 1)
 
 
 def tipos_por_codigo():
@@ -162,15 +170,18 @@ def bloques_pdf(ruta):
     return out
 
 
-def via_pdf(ym, codigos, grupos, campos, historicas=False, vigentes=(), solo=None):
+def via_pdf(ym, codigos, grupos, campos, historicas=False, vigentes=(), solo=None, exacto=False):
     """Campos de todas las entidades y grupos pedidos en el PDF del mes ym.
 
     historicas: agregar también las entidades del PDF que ya no están vigentes
     (fusionadas, absorbidas o cerradas), para armar series pro forma.
-    solo: si se indica, procesar únicamente esos códigos (sin grupos)."""
+    solo: si se indica, procesar únicamente esos códigos (sin grupos).
+    exacto: si el PDF de ym no está publicado, no usar el del mes anterior."""
     try:
         ruta = bc.pdf_entidades(ym)
     except bc.NoEncontrado:
+        if exacto:
+            raise
         ym = bc.mes_anterior(ym)  # el mes todavía no está publicado
         ruta = bc.pdf_entidades(ym)
     bloques = bloques_pdf(ruta)
@@ -260,12 +271,14 @@ def main():
 
     # Fusionar: PDF viejos -> PDF nuevos -> API (lo más reciente pisa revisiones)
     panel, pdfs, faltantes, historicas = {}, [], {}, {}
+    cierre, pendientes = None, []  # trimestre recién cerrado: (codigo, campo) todavía en '---'
 
     def volcar(datos):
         for c, cs in datos.items():
             for k, serie in cs.items():
                 for p, v in serie.items():
-                    if desde <= p <= hasta:
+                    # Un vacío ('---') no borra el dato que trajo otra fuente
+                    if desde <= p <= hasta and v is not None:
                         panel.setdefault((p, c), {})[k] = v
 
     if modo == 'pdf':
@@ -295,12 +308,34 @@ def main():
             res2 = bc.en_paralelo(lambda m: via_pdf(m, [], [], campos, solo=sorted(extra[m])),
                                   sorted(extra), workers=4)
             for m, r in sorted(res2, key=lambda x: x[0]):
-                if not isinstance(r, Exception):
+                if isinstance(r, Exception):
+                    faltantes['pdf_' + m] = str(r)
+                    continue
+                volcar(r['datos'])
+                pdfs.append(r['url'])
+                if r['faltan']:
+                    faltantes[r['ym']] = r['faltan']
+        # El PDF de un mes de cierre de trimestre suele traer ese trimestre vacío
+        # ('---') en la información adicional; lo completa el PDF del mes siguiente.
+        if ok and ok[-1]['ym'][5:] in ('03', '06', '09', '12'):
+            cierre = ok[-1]['ym']
+            pendientes = [(c, k) for c, cs in ok[-1]['datos'].items() for k, s in cs.items()
+                          if bc.CAMPOS[k][0] == 'adicional' and cierre in s and s[cierre] is None
+                          and any(v is not None for v in s.values())]
+            if pendientes:
+                try:
+                    r = via_pdf(mes_siguiente(cierre), list(codigos) + sorted(historicas),
+                                GRUPOS_FIJOS, campos, exacto=True)
                     volcar(r['datos'])
                     pdfs.append(r['url'])
-            if r['faltan']:
-                faltantes[r['ym']] = r['faltan']
+                except bc.NoEncontrado:
+                    pass  # la API puede traerlo; si no, se avisa más abajo
+                except bc.ErrorFuente as e:
+                    faltantes['pdf_' + mes_siguiente(cierre)] = str(e)
     volcar(datos_api)
+    if any(panel.get((cierre, c), {}).get(k) is None for c, k in pendientes):
+        avisos.append('La información trimestral de %s la completa el PDF de %s, que todavía no '
+                      'está publicado: esas celdas quedan vacías.' % (cierre, mes_siguiente(cierre)))
 
     nombres = dict(elegidas)
     nombres.update({c: h['nombre'] for c, h in historicas.items()})
@@ -328,7 +363,8 @@ def main():
                         'pct_celdas': round(100.0 * con / max(1, n_ent * len(periodos)), 1)}
     if modo == 'api' and necesita_pdf:
         avisos.append('Con la API solo hay %s: no es una serie mensual continua.' % periodos_api)
-    avisos.append('Supervivencia: solo entidades vigentes hoy; las fusionadas o cerradas no están.')
+    if not historicas:
+        avisos.append('Supervivencia: solo entidades vigentes hoy; las fusionadas o cerradas no están.')
     out = {'version_oraculo': bc.VERSION, 'archivo': os.path.abspath(a.salida), 'modo': modo, 'desde': periodos[0] if periodos else None,
            'hasta': periodos[-1] if periodos else None, 'periodos': len(periodos),
            'entidades': len(codigos), 'grupos': GRUPOS_FIJOS,

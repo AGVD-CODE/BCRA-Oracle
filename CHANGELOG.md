@@ -1,0 +1,60 @@
+# Changelog
+
+Cambios de los skills `bcra-oraculo` (español) y `bcra-oracle-en` (inglés). Las versiones siguen [versionado semántico](https://semver.org/lang/es/) según la política de [`docs/CONTRATO.md`](docs/CONTRATO.md): un cambio en una firma pública de `bcra_comun.py`, en una clave de campo o en una clave del JSON de los scripts sube la versión mayor.
+
+## [2.0.0] — 2026-10-25
+
+Reescritura completa. Es la versión que se usa en Claude y no se había subido al repositorio.
+
+### Por qué
+
+- **La v1 era lenta y frágil.** Cada pregunta descargaba el PDF mensual del BCRA (de 3,5 a 17 MB) con `wget`, lo convertía entero con `pdftotext` y buscaba el dato en el texto. Una pregunta simple tardaba lo que tardaba esa descarga.
+- **La v1 necesitaba instalar paquetes** (`xlrd`, `openpyxl`) en entornos donde muchas veces no se puede.
+- **El BCRA rediseñó su sitio.** La página que citaba la v1 (`PublicacionesEstadisticas/Entidades_financieras.asp`) hoy devuelve 404.
+- **El XLS del IPC daba un mes de atraso.** Se nombra por mes de publicación y un mes futuro devuelve una página HTML: la regla de "probar desde el mes actual hacia atrás" se quedaba con el mes anterior.
+- **La v1 no podía hacer rankings ni series largas** sin bajar y procesar decenas de PDF a mano.
+
+### Cambió
+
+- **Fuente principal: la API JSON del BCRA** (la de las páginas "Información de Entidades Financieras"). Responde en ~1 segundo con pocos KB por entidad y sección.
+- **Historia desde 2014** con los PDF mensuales: se lee solo el índice y las 4 páginas de la entidad (~0,1 s), y un PDF cada 3 meses alcanza.
+- **IPC desde el CSV del INDEC** (`serie_ipc_divisiones.csv`), con URL fija y siempre al día. Las acumuladas se calculan con el índice, como el INDEC (2024: 117,8 %).
+- **Pagos minoristas:** el script busca por su cuenta el último XLSX publicado y lo lee con la biblioteca estándar (se comparó celda por celda con openpyxl: 0 diferencias).
+- **Solo biblioteca estándar de Python 3.8+.** Ya no hacen falta `wget`, `xlrd` ni `openpyxl`. `pdftotext` (poppler) sigue haciendo falta, pero solo para la historia y la ficha institucional.
+- **`SKILL.md` reescrito** alrededor de "un comando por pregunta", con la tabla de comandos, cómo leer la respuesta y las trampas que cambian la respuesta. Las referencias (`diccionario.md`, `fuentes.md`, `consultas.md` y sus versiones en inglés) se actualizaron a las fuentes nuevas.
+- **Totales del sistema y de grupos** (sistema, públicos, privados, compañías financieras, 10 primeros privados) tal como los publica el BCRA, ya ponderados, en lugar de calcularlos sumando bancos.
+- **`null` significa "sin dato publicado"**: el 0 y el 99999 que usa el BCRA como marcadores ya no se confunden con valores reales.
+
+### Agregado
+
+- `scripts/bcra_comun.py`: módulo compartido por todos los scripts, con descargas con reintentos y caché de 2 horas, resolución de nombres y alias, el catálogo `CAMPOS` (117 claves estables) y los parsers de la API y del PDF. Tiene la constante `VERSION`.
+- `scripts/consultar_ranking.py`: ranking de las ~60 entidades por cualquier campo, cuota de mercado (`--participacion`), filtros por valor y por tamaño (`--entre-mayores`).
+- `scripts/consultar_historico.py`: series mensuales de cualquier campo desde 2014.
+- `consultar_entidad.py`: secciones de cartera por situación (1 a 5), cuentas sueldo, sucursales y cajeros por provincia y ficha institucional (presidente, gerente general, accionistas, auditor).
+- `consultar_ipc.py`: rubros, núcleo, regulados, estacionales, bienes y servicios, regiones, acumuladas entre dos meses y ranking de divisiones.
+- Errores siempre en JSON: `candidatos` si el nombre es ambiguo, `sugerencias_por_parecido` si no es una entidad financiera, `sin_acceso_red` si el entorno no llega a las fuentes.
+- `tools/verificar.py`: corre los valores de control (`references/fuentes.md`, sección 6) y los checksums de la v1, y compara la API con el PDF.
+- `docs/CONTRATO.md`: cómo construir otros skills sobre `bcra-oraculo`.
+- `bcra-oracle-en.skill`: paquete del skill en inglés.
+
+### Incompatible con la 1.0.0
+
+- **Cambió la forma de llamar a los scripts.** En la v1 se descargaba el archivo a mano y se le pasaba al script (`consultar_entidad.py entidades.txt --periodo ... --banco ...`, `consultar_ipc.py ipc.xls`, `consultar_pagos.py pagos.xlsx`). En la v2 los scripts descargan solos y reciben la entidad o la serie (`consultar_entidad.py Galicia --campo irr_tot`).
+- `consultar_entidad.py --todos` pasó a ser `consultar_ranking.py CAMPO --todos`.
+- `consultar_pagos.py --hojas` pasó a ser `--series`, y `--hoja` ya no vuelca las filas crudas de la hoja: filtra la búsqueda por hoja.
+- `consultar_entidad.py` y `consultar_ipc.py` ya no leen un archivo descargado a mano. Solo `consultar_pagos.py` lo acepta (`--archivo`).
+- **Las claves de campo se mantienen:** las 31 de la v1 (`irr_tot`, `roa`, `bA`, `pla`, …) siguen con el mismo nombre y la misma unidad. La v2 agrega 86.
+
+## [1.0.0] — 2026-08-12
+
+Primera versión publicada. La versión en inglés (`bcra-oracle-en`) se agregó el 2026-10-20, con los mismos scripts.
+
+- `SKILL.md` con el flujo "entender qué dato se pide → descargar la última versión → extraer → responder" y la regla de nunca inventar.
+- `consultar_entidad.py`: extraía balance e indicadores de un banco, o de todos (`--todos`), del texto del PDF mensual de Entidades Financieras convertido con `pdftotext`.
+- `consultar_ipc.py`: leía el XLS del IPC del INDEC (`sh_ipc_MM_YY.xls`) con `xlrd`.
+- `consultar_pagos.py`: listaba y volcaba las hojas del XLSX de Pagos Minoristas con `openpyxl`.
+- Referencias: `fuentes.md`, `diccionario.md` (31 campos) y `consultas.md`.
+- Paquete `bcra-oraculo.skill`.
+
+[2.0.0]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.0.0
+[1.0.0]: https://github.com/AGVD-CODE/BCRA-Oracle/tree/5577537

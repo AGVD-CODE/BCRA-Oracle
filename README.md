@@ -20,9 +20,10 @@ Version 2.0.0 is a full rewrite. In short:
 - **History back to 2014** from the monthly "Información de Entidades Financieras" PDFs (`consultar_historico.py`).
 - **Rankings and market share** across the ~60 banks (`consultar_ranking.py`), and **system and group totals** as published by the BCRA.
 - **Python standard library only.** No `wget`, `xlrd` or `openpyxl`; `pdftotext` is needed only for history and the institutional profile.
-- **A shared module, `scripts/bcra_comun.py`**, with stable field keys and a version number (`VERSION = "2.0.0"`), documented in [`docs/CONTRATO.md`](docs/CONTRATO.md).
+- **A shared module, `scripts/bcra_comun.py`**, with stable field keys and a version number (`VERSION`), documented in [`references/contrato.md`](skill/bcra-oraculo/references/contrato.md).
 - **INDEC CPI from the official CSV**, with a fixed URL that is always up to date (the old XLS lagged one month).
 - **Control values** that can be checked with `python3 tools/verificar.py`.
+- **New in 2.1.0: panels for other skills.** `consultar_panel.py` builds many entities × many months in one CSV (5 years of the ~60 banks in about 25 s), including entities that no longer exist (`--historicas`) for pro-forma series. The contract now ships inside the skill (`references/contrato.md`).
 
 La versión 2.0.0 es una reescritura completa. En resumen:
 
@@ -30,9 +31,10 @@ La versión 2.0.0 es una reescritura completa. En resumen:
 - **Historia desde 2014** con los PDF mensuales "Información de Entidades Financieras" (`consultar_historico.py`).
 - **Rankings y cuotas de mercado** entre los ~60 bancos (`consultar_ranking.py`), y **totales del sistema y de grupos** tal como los publica el BCRA.
 - **Solo biblioteca estándar de Python.** Sin `wget`, `xlrd` ni `openpyxl`; `pdftotext` solo hace falta para la historia y la ficha institucional.
-- **Un módulo compartido, `scripts/bcra_comun.py`**, con claves de campo estables y número de versión (`VERSION = "2.0.0"`), documentado en [`docs/CONTRATO.md`](docs/CONTRATO.md).
+- **Un módulo compartido, `scripts/bcra_comun.py`**, con claves de campo estables y número de versión (`VERSION`), documentado en [`references/contrato.md`](skill/bcra-oraculo/references/contrato.md).
 - **IPC del INDEC desde el CSV oficial**, con URL fija y siempre al día (el XLS anterior daba un mes de atraso).
 - **Valores de control** que se comprueban con `python3 tools/verificar.py`.
+- **Nuevo en la 2.1.0: paneles para otros skills.** `consultar_panel.py` arma muchas entidades × muchos meses en un CSV (5 años de los ~60 bancos en unos 25 s). Con `--historicas` incluye las entidades que ya no existen, para armar series pro forma. El contrato ahora viaja dentro del skill (`references/contrato.md`).
 
 Details, reasons and incompatible changes / Detalle, motivos y cambios incompatibles: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -131,23 +133,25 @@ BCRA-Oracle/
 │   │   ├── references/
 │   │   │   ├── diccionario.md   → every field key / todas las claves de campo
 │   │   │   ├── fuentes.md       → sources, pitfalls, control values / fuentes, trampas, valores de control
-│   │   │   └── consultas.md     → query recipes / recetas de consulta
+│   │   │   ├── consultas.md     → query recipes / recetas de consulta
+│   │   │   └── contrato.md      → how to build other skills on top / cómo construir otros skills encima
 │   │   └── scripts/
 │   │       ├── bcra_comun.py    → shared module (data layer) / módulo compartido (capa de datos)
 │   │       ├── consultar_entidad.py
 │   │       ├── consultar_ranking.py
 │   │       ├── consultar_historico.py
+│   │       ├── consultar_panel.py → many entities × months, CSV / muchas entidades × meses, CSV
 │   │       ├── consultar_ipc.py
 │   │       ├── consultar_pagos.py
 │   │       └── requirements.txt
 │   └── bcra-oracle-en/          → English skill / skill en inglés
 │       ├── SKILL.md
-│       ├── references/          → dictionary.md, sources.md, queries.md
+│       ├── references/          → dictionary.md, sources.md, queries.md, contrato.md
 │       └── scripts/             → same scripts as the Spanish version / los mismos scripts que en español
 ├── tools/
 │   └── verificar.py             → runs the control values / corre los valores de control
 ├── docs/
-│   ├── CONTRATO.md              → how to build other skills on top / cómo construir otros skills encima
+│   ├── CONTRATO.md              → points to references/contrato.md / apunta a references/contrato.md
 │   ├── EJEMPLOS.md              → example questions / ejemplos de preguntas
 │   └── PUBLICAR_EN_GITHUB.md
 ├── bcra-oraculo.skill           → Spanish package, ready to install / paquete en español, listo para instalar
@@ -164,27 +168,27 @@ The scripts are identical in both languages / Los scripts son idénticos en los 
 python3 tools/verificar.py
 ```
 
-Runs the control values from closed publications (Galicia in the April 2026 PDF, INDEC CPI: cumulative 2024 = 117.8 %, 2025 = 31.5 %, …), compares the API with the PDF and checks that the six scripts work. It prints OK or FALLA for each check. It needs network access and `pdftotext`.
+Runs the control values from closed publications (Galicia in the April 2026 PDF, INDEC CPI: cumulative 2024 = 117.8 %, 2025 = 31.5 %, …), compares the API with the PDF and checks that the seven scripts work. It prints OK or FALLA for each check. It needs network access and `pdftotext`.
 
-Corre los valores de control de publicaciones cerradas (Galicia en el PDF de abril de 2026, IPC del INDEC: acumulada 2024 = 117,8 %, 2025 = 31,5 %, …), compara la API con el PDF y comprueba que funcionen los seis scripts. Informa OK o FALLA por cada comprobación. Necesita red y `pdftotext`.
+Corre los valores de control de publicaciones cerradas (Galicia en el PDF de abril de 2026, IPC del INDEC: acumulada 2024 = 117,8 %, 2025 = 31,5 %, …), compara la API con el PDF y comprueba que funcionen los siete scripts. Informa OK o FALLA por cada comprobación. Necesita red y `pdftotext`.
 
 ---
 
 ## Building on this skill / Para construir sobre este skill
 
-`bcra-oraculo` is meant to be the data layer of other skills. Its module `scripts/bcra_comun.py` exposes functions (`resolver`, `consultar`, `pdf_entidades`, `normalizar_pdf`, …), a catalog of 117 stable field keys (`CAMPOS`) and a version number. Another skill can either import it, when both skills are installed side by side, or include a copy that states which version it took.
+`bcra-oraculo` is meant to be the data layer of other skills. Its module `scripts/bcra_comun.py` exposes functions (`resolver`, `consultar`, `pdf_entidades`, `normalizar_pdf`, …), a catalog of 117 stable field keys (`CAMPOS`) and a version number. Another skill can either import it, when both skills are installed side by side, or include a copy that states which version it took. For many entities over time it can simply run `consultar_panel.py` and read its CSV.
 
-**[`docs/CONTRATO.md`](docs/CONTRATO.md)** documents the public functions with their inputs and outputs, the exceptions, the JSON returned by the scripts, the field keys and the versioning policy: any change to a signature or a key bumps the major version and is recorded in the [`CHANGELOG.md`](CHANGELOG.md).
+**[`references/contrato.md`](skill/bcra-oraculo/references/contrato.md)** documents the public functions with their inputs and outputs, the exceptions, the JSON returned by the scripts, the field keys and the versioning policy: any change to a signature or a key bumps the major version and is recorded in the [`CHANGELOG.md`](CHANGELOG.md).
 
-`bcra-oraculo` está pensado como la capa de datos de otros skills. Su módulo `scripts/bcra_comun.py` expone funciones (`resolver`, `consultar`, `pdf_entidades`, `normalizar_pdf`, …), un catálogo de 117 claves de campo estables (`CAMPOS`) y un número de versión. Otro skill puede importarlo, si los dos están instalados uno al lado del otro, o incluir una copia que diga qué versión tomó.
+`bcra-oraculo` está pensado como la capa de datos de otros skills. Su módulo `scripts/bcra_comun.py` expone funciones (`resolver`, `consultar`, `pdf_entidades`, `normalizar_pdf`, …), un catálogo de 117 claves de campo estables (`CAMPOS`) y un número de versión. Otro skill puede importarlo, si los dos están instalados uno al lado del otro, o incluir una copia que diga qué versión tomó. Para muchas entidades en el tiempo, alcanza con correr `consultar_panel.py` y leer su CSV.
 
-**[`docs/CONTRATO.md`](docs/CONTRATO.md)** documenta las funciones públicas con sus entradas y salidas, las excepciones, el JSON que devuelven los scripts, las claves de los campos y la política de versiones: todo cambio en una firma o una clave sube la versión mayor y queda registrado en el [`CHANGELOG.md`](CHANGELOG.md).
+**[`references/contrato.md`](skill/bcra-oraculo/references/contrato.md)** documenta las funciones públicas con sus entradas y salidas, las excepciones, el JSON que devuelven los scripts, las claves de los campos y la política de versiones: todo cambio en una firma o una clave sube la versión mayor y queda registrado en el [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
 ## Related projects / Proyectos relacionados
 
-- **[Banking-Metrics-Analyst](https://github.com/AGVD-CODE/Banking-Metrics-Analyst)** (`estratega-bancario`): a strategic-analysis skill for Argentine banks built on this data layer. It compares many entities over time, crosses them with macro data and turns the findings into sized business opportunities, with charts. It includes a copy of `bcra_comun.py`. / Skill de análisis estratégico de bancos argentinos construido sobre esta capa de datos. Compara muchas entidades en el tiempo, las cruza con la macro y convierte los hallazgos en oportunidades de negocio dimensionadas, con gráficos. Incluye una copia de `bcra_comun.py`.
+- **[Banking-Metrics-Analyst](https://github.com/AGVD-CODE/Banking-Metrics-Analyst)** (`estratega-bancario`): a strategic-analysis skill for Argentine banks built on this data layer. It compares many entities over time, crosses them with macro data and turns the findings into sized business opportunities, with charts. Since its 1.1.0 it uses the installed `bcra-oraculo` (≥ 2.1, same major version) with a version check instead of a copy. / Skill de análisis estratégico de bancos argentinos construido sobre esta capa de datos. Compara muchas entidades en el tiempo, las cruza con la macro y convierte los hallazgos en oportunidades de negocio dimensionadas, con gráficos. Desde su 1.1.0 usa el `bcra-oraculo` instalado (2.1 o posterior, misma versión mayor) con control de versión, en lugar de una copia.
 
 ---
 

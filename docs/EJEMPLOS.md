@@ -20,22 +20,47 @@ Catálogo de preguntas que el oráculo sabe responder, organizadas por tipo. Tod
 - Dame el balance completo del Banco Nación: activo, préstamos, depósitos y patrimonio.
 - ¿Cómo está el Banco Supervielle en mora de consumo vs comercial?
 
+## Consultas de autoridades y datos institucionales
+
+- ¿Quién es el presidente del Banco Galicia?
+- ¿Quiénes son los accionistas del Banco Macro?
+- ¿Quién audita al Banco Supervielle?
+
 ## Consultas analíticas / rankings
+
+Las responde `consultar_ranking.py`, que consulta a todas las entidades en paralelo (unos segundos).
 
 - ¿Qué banco tiene más mora?
 - ¿Cuáles son los 5 bancos con mayor cartera irregular?
+- ¿Cuáles son los 5 bancos con más mora entre los 20 más grandes?
 - ¿Los 3 bancos más grandes por activo?
 - ¿Qué banco tiene más tarjetas de crédito emitidas?
+- ¿Qué cuota de mercado tiene cada banco en tarjetas de crédito? ¿Y en depósitos?
 - ¿Cuáles son los 10 bancos con más sucursales?
 - ¿Qué banco tiene la mejor cobertura de previsiones?
-- ¿Cuál es la mora promedio del sistema?
+- ¿Cuáles son los 5 bancos de menor ROE?
 - ¿Cuántos bancos tienen mora mayor al 10%?
+- ¿Qué compañía financiera tiene más préstamos?
 
-## Consultas de evolución (varios períodos)
+## Consultas de totales del sistema y de grupos
+
+- ¿Cuál es la mora promedio del sistema?
+- ¿Cuántas tarjetas de crédito hay en total en el sistema financiero?
+- ¿Cómo está la mora de los bancos públicos contra la de los privados?
+
+## Consultas de evolución e historia (varios períodos)
+
+Hasta 5 períodos salen de la API; para más, `consultar_historico.py` lee los PDF mensuales del BCRA, con historia completa desde 2014.
 
 - ¿Cómo evolucionó la mora del Banco Galicia en el último año?
 - ¿El activo del Banco Nación creció o cayó en los últimos meses?
 - ¿Cómo viene la mora de consumo del sistema?
+- ¿Cómo evolucionó la mora de consumo del Galicia desde 2018?
+- ¿Cuánto creció en términos reales el patrimonio del Banco Macro en los últimos 24 meses? *(variación nominal ajustada con el IPC: cálculo propio)*
+- ¿Cómo cambió el ROE del sistema año por año desde 2014?
+- ¿Cuántas tarjetas de crédito tenía el Macro a fin de cada año desde 2019?
+
+Las entidades que cambiaron de nombre no se encuentran en los PDF anteriores al cambio: por ejemplo, el Santander (antes Santander Río) en los PDF anteriores a junio de 2022 y el BBVA (antes BBVA Francés) en los anteriores a diciembre de 2019.
 
 ## Consultas de inflación (INDEC)
 
@@ -61,16 +86,19 @@ Catálogo de preguntas que el oráculo sabe responder, organizadas por tipo. Tod
 
 Estas preguntas el oráculo las responde diciendo que el dato no está disponible, sin inventar:
 
-- ¿Cuántos clientes nuevos sumó el Banco X el mes pasado? *(el BCRA no publica altas de clientes)*
-- ¿Cuál es la ganancia neta en pesos del Banco Y? *(publica indicadores de rentabilidad como ROE/ROA, no el resultado absoluto en todos los cortes)*
+- ¿Cuántos clientes nuevos sumó el Banco X el mes pasado? *(el BCRA no publica altas de clientes; lo más cercano son las cajas de ahorro y los titulares de tarjetas)*
+- ¿Cuántos usuarios tiene Mercado Pago? *(las billeteras virtuales no figuran en la nómina de entidades financieras del BCRA)*
 - ¿Cuánto cotiza el dólar? *(fuera de las fuentes que consulta)*
 - ¿Qué tasa paga el Banco Z en un plazo fijo hoy? *(publica tasa implícita promedio del período, no la tasa vigente de pizarra)*
+- ¿Cuál era la mora del Banco Y en 2009? *(los PDF de 2010 y anteriores no se pueden leer; la historia completa empieza en 2014)*
 
 ## Notas sobre los períodos
 
 Distintas fuentes tienen distintos rezagos:
-- **Balance, indicadores y mora:** mensual, el más actualizado.
-- **Tarjetas, cuentas, sucursales:** trimestral (marzo, junio, septiembre, diciembre).
+- **Balance, indicadores, mora, situación de deudores y cuentas sueldo:** mensual, con unos 3 meses de rezago.
+- **Sucursales y cajeros:** foto al último mes publicado.
+- **Tarjetas, cuentas y empleados:** trimestral (marzo, junio, septiembre, diciembre), con unos 4 meses de rezago.
+- **Medios de pago:** mensual; cada hoja del informe tiene su propio rezago.
 - **Inflación:** mensual, se publica a mediados del mes siguiente.
 
 Por eso, al preguntar por varios datos de un banco, las respuestas pueden corresponder a meses distintos. El oráculo siempre aclara a qué período pertenece cada dato.

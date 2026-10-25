@@ -1,114 +1,98 @@
 ---
 name: bcra-oraculo
-description: Consulta datos oficiales del sistema financiero argentino (BCRA e INDEC) para responder preguntas puntuales y analíticas. Usar SIEMPRE que el usuario pregunte por indicadores de bancos argentinos como tarjetas de crédito o débito, cajas de ahorro, cuentas, depósitos, préstamos, mora o cartera irregular, sucursales, cajeros, empleados, ROE, ROA, apalancamiento, balance, o por inflación del INDEC, o por comparaciones y rankings entre entidades (qué banco tiene más X, cómo evolucionó Y, top 5 de Z). El skill descarga el último reporte disponible de la fuente oficial, valida que sea la versión más reciente, extrae el dato real y responde citando período y fuente. Si el dato no existe en ningún reporte, responde que no se dispone del dato, sin inventar. No arma dashboards ni archivos HTML, solo consulta y responde.
+description: Consulta en vivo datos oficiales del sistema financiero argentino (BCRA e INDEC) y responde con el dato, su período y la fuente. Usar SIEMPRE que el usuario pregunte por bancos o compañías financieras argentinas (mora o cartera irregular, situación de deudores, préstamos, depósitos, activo, patrimonio, resultados, ROE, ROA, apalancamiento, liquidez, tasas, tarjetas de crédito o débito, cajas de ahorro, cuentas sueldo, empleados, sucursales, cajeros, presidente o accionistas), por rankings o comparaciones entre entidades (qué banco tiene más X, top 5 de Z, cuota de mercado), por la evolución de un indicador, por totales del sistema financiero, por inflación del INDEC (IPC general, núcleo, rubros, acumulada) o por medios de pago (transferencias, tarjetas, cheques, ECHEQ, ticket promedio). Si el dato no está publicado, lo dice sin inventar. No arma dashboards.
+compatibility: Requiere ejecución de código con Python 3.8+ y acceso de red a www.bcra.gob.ar y www.indec.gob.ar. pdftotext (poppler-utils) solo para series de más de 5 meses y para la ficha institucional.
 ---
 
 # Oráculo del Sistema Financiero Argentino
 
-Este skill responde preguntas sobre el sistema financiero argentino yendo a buscar el dato **real** a las fuentes oficiales (BCRA e INDEC), en el momento de la consulta. No usa datos cacheados ni de memoria: para cada pregunta descarga el último reporte publicado, valida que sea la versión más reciente disponible, extrae el dato exacto y responde.
+Responde preguntas sobre el sistema financiero argentino con datos oficiales del BCRA y del INDEC obtenidos en el momento de la consulta. Los scripts de `scripts/` descargan la última publicación, extraen el dato y devuelven JSON con valor, período, unidad y fuente.
 
 ## Regla de oro: nunca inventar
 
-Esta es la regla más importante del skill y no admite excepciones:
+- **Responder solo con datos que devolvió un script en esta sesión.** Nunca de memoria ni con estimaciones.
+- **Si el dato no está publicado, decirlo.** "El BCRA no publica ese dato" vale más que un número aproximado.
+- **Citar siempre período y fuente.** Ejemplo: "según el BCRA (Información de Entidades Financieras), a julio de 2026".
+- **Separar dato directo de dato calculado.** Si hubo un cálculo (participación, variación, ticket promedio, cartera irregular por situaciones), decirlo y explicar la fórmula en una línea.
+- **`null` en el JSON significa "sin dato publicado"**, nunca cero.
 
-- **Solo responder con datos extraídos de una fuente oficial en esta misma sesión.** Nunca responder de memoria, ni con conocimiento general, ni con estimaciones.
-- **Si el dato no está en los reportes, decir explícitamente que no se dispone del dato.** No aproximar, no completar, no "dar una idea". Una respuesta honesta de "el BCRA no publica ese dato" vale más que un número inventado.
-- **Siempre citar el período del dato y la fuente.** Ej: "según el informe de Entidades Financieras del BCRA a marzo 2026". Esto hace la respuesta verificable.
-- **Distinguir dato directo de dato calculado.** Si la pregunta requiere un cálculo (peso de mercado, ranking, variación), aclararlo y explicar brevemente cómo se calculó.
-- **Ante la duda sobre si un número es real o recordado, no usarlo.** Volver a la fuente.
+## Un comando por pregunta
 
-## Flujo para responder una pregunta
+Ejecutar desde la carpeta de este skill (las rutas son relativas a este archivo). Los scripts usan solo Python estándar: **no instalar nada**. Repetir una consulta en la misma sesión es instantáneo, porque los scripts guardan las descargas en caché durante 2 horas.
 
-### 1. Entender qué dato se pide y en qué fuente vive
+**Para preguntas comunes, no leer las referencias:** el comando está en esta tabla.
 
-Identificar qué indicador pide la pregunta y mapearlo a su fuente. El mapa completo está en `references/diccionario.md`, pero a grandes rasgos:
+| La pregunta pide | Comando |
+|---|---|
+| Panorama de un banco | `python3 scripts/consultar_entidad.py Galicia` |
+| Uno o varios datos de un banco | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot pla roe` |
+| Tarjetas, cuentas, plazos fijos, empleados | `python3 scripts/consultar_entidad.py Nacion --seccion adicional` |
+| Sucursales y cajeros (por provincia) | `python3 scripts/consultar_entidad.py Macro --seccion sucursales --provincias` |
+| Balance o resultados | `python3 scripts/consultar_entidad.py Santander --seccion balance` |
+| Situación de deudores (situaciones 1 a 5) | `python3 scripts/consultar_entidad.py BBVA --seccion cartera` |
+| Presidente, gerente general, accionistas, auditor | `python3 scripts/consultar_entidad.py Galicia --seccion ficha` |
+| Total del sistema o de un grupo | `python3 scripts/consultar_entidad.py sistema --campo irr_tot pla` (grupos: `sistema`, `publicos`, `privados`, `companias`, `top10`) |
+| Ranking o comparación entre entidades | `python3 scripts/consultar_ranking.py irr_tot --top 5` |
+| Cuota de mercado | `python3 scripts/consultar_ranking.py pla --top 10 --participacion` |
+| Cuántas entidades superan un umbral | `python3 scripts/consultar_ranking.py irr_tot --mayor-que 10` |
+| Evolución reciente (hasta 5 períodos) | `python3 scripts/consultar_entidad.py Galicia --campo irr_tot --serie` |
+| Evolución de 6 meses o más | `python3 scripts/consultar_historico.py Galicia --campo irr_tot --meses 12` |
+| Inflación del último mes (con rubros) | `python3 scripts/consultar_ipc.py` |
+| Inflación de un mes, una serie o acumulada | `python3 scripts/consultar_ipc.py --mes 2026-06` · `--serie nucleo --meses 12` · `--acumulado 2026` · `--acumulado --desde 2025-07 --hasta 2026-06` |
+| Qué rubro subió más | `python3 scripts/consultar_ipc.py --ranking-divisiones` |
+| Medios de pago | `python3 scripts/consultar_pagos.py --buscar "tarjetas de crédito"` (agregar `--meses 12` para la serie; `--series` lista todo) |
 
-| Tema de la pregunta | Fuente | Reporte |
-|---|---|---|
-| Tarjetas de crédito/débito, cajas de ahorro, cuentas sueldo, sucursales, cajeros, empleados | BCRA | Información Adicional (Entidades) |
-| Mora, cartera irregular, situaciones 1-5, previsiones, calidad de cartera | BCRA | Entidades Financieras (PDF) |
-| Balance: activo, préstamos, depósitos, patrimonio | BCRA | Entidades Financieras (PDF) |
-| Indicadores: ROE, ROA, apalancamiento, tasas, liquidez | BCRA | Entidades Financieras (PDF) |
-| Volumen y monto de pagos, transferencias, ticket promedio, cheques, ECHEQ | BCRA | Informe de Pagos Minoristas (XLSX) |
-| Inflación, IPC, variación de precios, canasta, divisiones | INDEC | IPC Nacional (XLS) |
+Si la pregunta mezcla fuentes (por ejemplo, ticket promedio contra inflación), correr los comandos necesarios **en paralelo** y combinar los resultados.
 
-Leer `references/fuentes.md` para las URLs exactas y las trampas de descarga (críticas — ver abajo).
+### Campos más usados
 
-### 2. Descargar la última versión disponible
+Lista completa: `python3 scripts/consultar_entidad.py --campos` o `references/diccionario.md`.
 
-**Este paso es obligatorio en cada consulta.** No asumir que un archivo descargado antes sigue vigente. Descargar la fuente correspondiente y **validar que sea la más reciente** siguiendo las reglas de `references/fuentes.md`.
+- **Mora y calidad de cartera (mensual, %):** `irr_tot` mora total · `irr_cons` consumo · `irr_com` comercial · `irr_priv` sector privado · `prev_irr` cobertura con previsiones · `tf_s1`…`tf_s5` situaciones · `tf_irregular` situaciones 3+4+5.
+- **Rentabilidad y otros indicadores (mensual):** `roe` · `roa` · `apalancamiento` (veces) · `tasa_prest` · `tasa_dep` · `liq_tit_cot` · `dep_empleado`.
+- **Balance (mensual, millones de pesos):** `bA` activo · `bPr` préstamos · `bDe` depósitos · `bPN` patrimonio neto · `bCA` saldo en cajas de ahorro · `bPF` plazos fijos · `bRes` resultado acumulado del ejercicio.
+- **Información adicional (trimestral, cantidades):** `pla` tarjetas de crédito · `tit` titulares · `deb` tarjetas de débito · `cah` cajas de ahorro · `cc` cuentas corrientes · `emp` empleados.
+- **Mensual, cantidades:** `remu` cuentas sueldo · `sucursales` · `cajeros`.
 
-Trampas críticas que el skill debe manejar (detalle completo en `references/fuentes.md`):
-- **INDEC:** el archivo se nombra por el **mes de publicación**, no por el mes del dato. El IPC de junio se publica en julio → archivo `sh_ipc_07_26.xls`. Probar desde el mes actual hacia atrás hasta encontrar el archivo válido (~2.3MB; los meses futuros dan un placeholder de ~36KB).
-- **BCRA PDF grande (>5MB):** las herramientas de Drive fallan. Usar `wget` directo + `pdftotext -layout`.
-- **BCRA Pagos:** el slug de la URL alterna entre dos patrones; probar ambos.
+## Cómo leer la respuesta del script
 
-Para saber cuál es el último período disponible, probar el mes más reciente y retroceder hasta que la descarga sea válida.
+- `datos.<campo>.valor` y `.periodo` ("YYYY-MM"): el dato y el mes al que corresponde.
+- `candidatos`: el nombre es ambiguo. Preguntar al usuario cuál quiere, mostrando los candidatos.
+- `sugerencias_por_parecido` con error "no figura en la nómina": la entidad no es un banco ni una compañía financiera registrada (por ejemplo, una billetera virtual). Decirlo. No elegir una sugerencia por cuenta propia.
+- `sin_dato_publicado` o `sin_dato_en_el_periodo`: el BCRA no publica ese dato para esa entidad. Decirlo.
+- `sin_acceso_red: true`: el entorno no llega a las fuentes. Pedir al usuario que habilite el acceso de red a `www.bcra.gob.ar` y `www.indec.gob.ar` en la configuración de ejecución de código, o que suba el archivo. Nunca responder de memoria.
+- Error "Falta pdftotext": solo afecta a `consultar_historico.py` y a `--seccion ficha`. Si el entorno lo permite, instalarlo (`apt-get install -y poppler-utils`). Si no, avisar que esa consulta no está disponible y ofrecer los 5 períodos de `--serie`.
 
-### 3. Extraer el dato con los scripts
+## Formato de respuesta
 
-Usar el extractor correspondiente en `scripts/`:
-- `consultar_entidad.py` — indicadores, balance, mora y cartera de un banco (o de todos) desde el PDF del BCRA.
-- `consultar_adicional.py` — tarjetas, cuentas, sucursales, cajeros, empleados desde Información Adicional.
-- `consultar_pagos.py` — medios de pago desde el XLSX del BCRA.
-- `consultar_ipc.py` — inflación desde el XLS del INDEC.
-- `consultar_ranking.py` — para preguntas analíticas que recorren todos los bancos.
+Dar el dato con su unidad, el período y la fuente. Si es calculado, agregar cómo se calculó.
 
-Cada script recibe la fuente ya descargada y devuelve los datos parseados. Ver `references/consultas.md` para el detalle de cómo invocarlos y cómo resolver cada tipo de pregunta.
+> El Banco Galicia tenía **4.930.958 tarjetas de crédito** (plásticos) a **junio de 2026**, según la Información de Entidades Financieras del BCRA.
 
-### 4. Responder
+> Galicia concentra el **12,9 %** de las tarjetas de crédito del sistema a junio de 2026 (4,93 millones de 38,1 millones). *Participación calculada sobre el total del sistema financiero.*
 
-Formato de respuesta:
-- **El dato**, con su unidad.
-- **El período** al que corresponde.
-- **La fuente** oficial.
-- Si es calculado, **cómo se calculó**.
+> El BCRA no publica la cantidad de clientes por banco. Lo más cercano que publica es la cantidad de cajas de ahorro (10.607.086 en Galicia a junio de 2026) y de titulares de tarjetas de crédito.
 
-**Ejemplo de respuesta a dato directo:**
-> El Banco Galicia tenía **4.383.666 plásticos de crédito** emitidos a **marzo 2026**, según la Información Adicional de Entidades Financieras del BCRA.
+*(Los números de estos ejemplos son reales a la fecha indicada; en cada consulta usar los que devuelva el script.)*
 
-**Ejemplo de respuesta a dato calculado:**
-> El Banco Galicia representa el **9,3%** de las tarjetas de débito del sistema a marzo 2026 (7,5M de tarjetas del banco sobre 81,7M del sistema). *Peso de mercado calculado sobre el total de las 45 entidades que reportan tarjetas de débito.*
+## Trampas que cambian la respuesta
 
-**Ejemplo de dato inexistente:**
-> El BCRA no publica la cantidad de clientes por sucursal en sus informes de Entidades Financieras. El dato disponible más cercano es la cantidad de sucursales (321 para Galicia a marzo 2026) y de empleados (6.025), pero no la relación clientes/sucursal.
+- **Los períodos difieren por sección.** Balance, indicadores, mora, sucursales y cuentas sueldo son mensuales. Tarjetas, cuentas y empleados son trimestrales: su último período puede ser anterior. Si una respuesta mezcla datos, dar el período de cada uno.
+- **Unidades.** El balance está en millones de pesos corrientes (40.325.296,7 millones = 40,3 billones de pesos; en Argentina, 1 billón = 1 millón de millones). La situación de deudores también está en millones. Indicadores y mora en %.
+- **Valores nominales.** Para comparar montos en el tiempo, avisar que no están ajustados por inflación. Si hace falta, ajustar con `consultar_ipc.py` y aclararlo como cálculo.
+- **Rankings de mora.** Los bancos chicos o de nicho suelen encabezarlos. Si la pregunta busca relevancia sistémica, usar `--entre-mayores 20` u ofrecerlo.
+- **Historia:** `consultar_historico.py` llega hasta 2014 con todos los campos. Para 2011-2013 faltan los indicadores de mora; antes de 2011 no hay historia. Solo funciona con entidades vigentes hoy.
+- **"Sistema"** incluye bancos y compañías financieras. Los rankings usan solo bancos (públicos y privados), salvo que se pida `--grupo todas` o `--grupo companias`.
+- **Alias.** "Provincia" es el Banco de la Provincia de Buenos Aires. "Nación" es el Banco de la Nación Argentina. "Naranja X" es Naranja Digital Compañía Financiera. Ante cualquier otra duda, el script devuelve candidatos.
 
-## Tipos de preguntas
+## Qué NO hace
 
-### Puntuales (un banco, un indicador)
-"¿Cuántas cajas de ahorro tiene el Banco Nación?" → descargar la fuente, extraer el dato de ese banco, responder.
+- No arma dashboards, gráficos ni HTML: solo consulta y responde.
+- No responde sobre datos fuera de estas fuentes: dólar, acciones, plazos fijos de pizarra o noticias. Decir "eso no está en las fuentes que consulto (BCRA e INDEC)".
+- No inventa. Ver la regla de oro.
 
-### Analíticas (comparaciones, rankings, evolución)
-"¿Qué banco tiene más mora?", "¿top 5 por sucursales?", "¿cómo evolucionó la mora de Galicia en el último año?" → estas requieren recorrer **todos** los bancos o **varios períodos**. Usar `consultar_ranking.py`. Avisar al usuario que puede tardar un poco más porque procesa el reporte completo. Detalle en `references/consultas.md`.
+## Referencias (leer solo si hace falta)
 
-### Cruzadas (mezclan fuentes)
-"¿El ticket promedio de crédito le ganó a la inflación en el último mes?" → descargar Pagos (BCRA) e IPC (INDEC), extraer ambos, comparar. Aclarar que son dos fuentes distintas con posibles rezagos distintos.
-
-## Identificación de bancos
-
-Los nombres varían entre reportes. Usar el mapeo de `references/diccionario.md` (sección "Identificación de entidades"). Casos frecuentes:
-- El usuario dice "Galicia" → "BANCO DE GALICIA Y BUENOS AIRES S.A.U." (código 7).
-- "Nación" → "BANCO DE LA NACION ARGENTINA" (código 11).
-- "Provincia" → "BANCO DE LA PROVINCIA DE BUENOS AIRES".
-- Variantes con acentos, "S.A.", "S.A.U.", sucursales, etc. Buscar de forma flexible (sin distinguir mayúsculas/acentos) y, si hay ambigüedad, preguntar al usuario cuál de los candidatos quiere.
-
-Si el banco no existe en el reporte, decirlo: "No encuentro una entidad con ese nombre en el informe del BCRA. Las entidades disponibles son: [listar las más parecidas]."
-
-## Qué NO hace este skill
-
-- **No arma dashboards ni archivos HTML.** Si el usuario pide un dashboard, aclarar que este skill solo consulta y responde datos; para el dashboard existe un skill/proyecto distinto.
-- **No responde sobre datos fuera de las fuentes.** Cotización del dólar, acciones, tasas de otros países, noticias: fuera de alcance. Responder "eso no está en las fuentes que consulto (BCRA e INDEC)".
-- **No inventa.** Ver la regla de oro.
-
-## Requisitos del entorno
-
-Este skill necesita un entorno con ejecución de código (`wget`, `python3` con `xlrd`/`openpyxl`, `pdftotext`). Sin eso, puede leer las instrucciones pero no ejecutar las descargas ni las extracciones. Instalar dependencias si faltan:
-```bash
-pip install xlrd openpyxl --break-system-packages
-```
-
-## Archivos de referencia
-
-- `references/fuentes.md` — URLs oficiales, patrones de descarga y todas las trampas conocidas. **Leer siempre antes de descargar.**
-- `references/diccionario.md` — qué es cada campo, en qué fuente vive, unidades, cómo se calcula, e identificación de entidades. **Leer para mapear la pregunta al dato.**
-- `references/consultas.md` — recetas para resolver cada tipo de pregunta (puntual, analítica, cruzada), con ejemplos.
+- `references/diccionario.md`: todos los campos, unidades, frecuencia y qué cálculos se pueden hacer. Leer si la pregunta usa un concepto que no está en la lista de arriba.
+- `references/consultas.md`: recetas para preguntas analíticas, de evolución, cruzadas y de "dato inexistente".
+- `references/fuentes.md`: URLs, formato de cada fuente, trampas conocidas y cómo adaptarse si el BCRA o el INDEC cambian algo. Leer solo si un script falla.

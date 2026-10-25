@@ -147,6 +147,8 @@ Texto de las 4 páginas de una entidad o grupo dentro del PDF.
 - **Entrada:** `ruta`, la de `pdf_entidades`. `entidad`, el diccionario de `resolver`.
 - **Salida:** `(texto, pagina_inicial)`: el texto de `pdftotext -layout` de esas páginas (separadas por `\f`) y el número de página del archivo donde empiezan.
 - **Errores:** `ErrorFuente` si falta `pdftotext`, si no se lee el índice o si la entidad no figura en ese PDF (por ejemplo, una entidad que todavía no existía).
+- **Limitación conocida:** la entidad se busca por su nombre **actual** en el índice del PDF. Una entidad que cambió de nombre no se encuentra en los PDF anteriores al cambio (Santander, antes Santander Río, en los PDF anteriores a junio de 2022; BBVA, antes BBVA Francés, en los anteriores a diciembre de 2019).
+- **Trimestre recién cerrado:** en el PDF de un mes de cierre de trimestre, la información adicional de ese trimestre suele venir en `---` (`None`). La completa el PDF del mes siguiente.
 
 ### `normalizar_pdf(texto)`
 

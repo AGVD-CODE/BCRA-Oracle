@@ -2,7 +2,7 @@
 
 `bcra-oraculo` es la **capa de datos** de esta biblioteca de skills: descarga las publicaciones oficiales del BCRA y del INDEC, las normaliza y devuelve cada dato con una clave estable, su período, su unidad y su fuente. Los skills de análisis (por ejemplo, [estratega-bancario](https://github.com/AGVD-CODE/Banking-Metrics-Analyst)) se construyen encima y no vuelven a parsear las fuentes.
 
-Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.0.0** (`bcra_comun.VERSION`).
+Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.1.0** (`bcra_comun.VERSION`). Viaja dentro del skill (`references/contrato.md`), así que está disponible donde esté instalado.
 
 ## Índice
 1. Dos formas de usarlo
@@ -35,11 +35,11 @@ if bc.VERSION.split('.')[0] != '2':
 
 Controlá siempre la versión mayor: es la que garantiza este contrato (sección 6).
 
-También podés correr los scripts de `bcra-oraculo` como procesos y leer su JSON (sección 4). Sirve para preguntas sueltas; para recorrer muchas entidades, importar el módulo es más rápido.
+También podés correr los scripts de `bcra-oraculo` como procesos y leer su JSON (sección 4). Para preguntas sueltas alcanza con `consultar_entidad.py` o `consultar_ranking.py`. Para recorrer muchas entidades y meses, usá `consultar_panel.py` (desde la 2.1.0): arma el panel completo en un CSV, convirtiendo cada PDF una sola vez para todas las entidades. Así otro skill no necesita importar el módulo para obtener datos: solo lo importa si quiere los metadatos (`CAMPOS`, `describir`, `ALIAS`, …).
 
 ### B. Incluir una copia de `bcra_comun.py`
 
-Copiá `skill/bcra-oraculo/scripts/bcra_comun.py` en `scripts/` de tu skill. El skill queda autocontenido: no depende de que `bcra-oraculo` esté instalado. A cambio, las correcciones no llegan solas: hay que volver a copiar.
+Copiá `scripts/bcra_comun.py` de este skill en `scripts/` del tuyo. El skill queda autocontenido: no depende de que `bcra-oraculo` esté instalado. A cambio, las correcciones no llegan solas: hay que volver a copiar.
 
 Reglas para la copia:
 
@@ -59,17 +59,16 @@ Reglas para la copia:
 
 - **Para actualizarla,** leé el `CHANGELOG.md` desde la versión que tenés. Si sube la versión mayor, revisá lo que dice que cambió antes de reemplazar la copia.
 
-**Así lo hace estratega-bancario:** usa su copia en `skill/estratega-bancario/scripts/bcra_comun.py` y, si se define la variable de entorno `BCRA_ORACULO_DIR` con la carpeta de un `bcra-oraculo` instalado, usa la de ese skill. Su copia actual es idéntica a la 2.0.0 de este repositorio salvo la constante `VERSION` y la línea de versionado del docstring, que se agregaron después.
+### Cómo lo hace estratega-bancario (desde su 1.1.0)
 
-Combinar las dos formas (copia por defecto, instalada si se pide) es lo más robusto:
+Usa la forma A, sin copia propia, para recibir las mejoras de `bcra-oraculo` sin tocarse:
 
-```python
-def cargar_bcra_comun():
-    externo = os.environ.get('BCRA_ORACULO_DIR')
-    sys.path.insert(0, os.path.join(externo, 'scripts') if externo else AQUI)
-    import bcra_comun
-    return bcra_comun
-```
+1. Busca el `bcra-oraculo` instalado: la variable `BCRA_ORACULO_DIR`, la carpeta de skills donde está instalado él mismo, `~/.claude/skills/` y las carpetas de skills de Claude.
+2. Lee `VERSION` del `bcra_comun.py` encontrado **sin importarlo** y exige la misma mayor (2) y al menos la menor que necesita (2.1, por `consultar_panel.py`).
+3. Si no hay una versión compatible, termina con un JSON que dice qué hay instalado y qué instalar. Nunca sigue con otra versión.
+4. Para los datos corre `consultar_panel.py` como proceso. Para los metadatos importa `CAMPOS`, `describir`, `GRUPOS`, `ALIAS`, `ALIAS_GRUPO`, `VACIAS` y `norm`.
+
+La forma B sigue siendo válida para un skill que tenga que funcionar sin `bcra-oraculo` instalado, a cambio de actualizar la copia a mano.
 
 ---
 
@@ -85,7 +84,7 @@ Convenciones que valen para todo:
 
 ### `VERSION`
 
-`str`, por ejemplo `"2.0.0"`. Versión semántica del módulo (sección 6).
+`str`, por ejemplo `"2.1.0"`. Versión semántica del módulo (sección 6).
 
 ### `nomina(grupo='AAA00')`
 
@@ -242,7 +241,7 @@ Exception
 
 ## 4. JSON que devuelven los scripts
 
-Los scripts de `skill/bcra-oraculo/scripts/` (`consultar_entidad.py`, `consultar_ranking.py`, `consultar_historico.py`, `consultar_ipc.py`, `consultar_pagos.py`) siguen las mismas reglas:
+Los scripts de `scripts/` (`consultar_entidad.py`, `consultar_ranking.py`, `consultar_historico.py`, `consultar_panel.py`, `consultar_ipc.py`, `consultar_pagos.py`) siguen las mismas reglas:
 
 - Escriben **un objeto JSON** en la salida estándar (UTF-8). Los errores previstos también salen como JSON, no como traceback.
 - Los períodos son `"YYYY-MM"` y `null` significa "sin dato publicado".
@@ -269,6 +268,7 @@ Para distinguir los dos casos del código 2, mirar si la salida estándar trae J
 | `consultar_ranking.py` | `campo`, `desc`, `unidad`, `periodo`, `grupo`, `orden`, `entidades_consultadas`, `entidades_con_dato`, `ranking` (`[{pos, entidad, codigo, valor, participacion_pct}]`), `valor_sistema_financiero`, `fuente`, `sin_dato_en_el_periodo`, `filtro`, `filtro_valor`, `nota_participacion`. |
 | `consultar_historico.py` | `entidad`, `codigo`, `desde`, `hasta`, `fuente`, `pdfs`, `datos` (`{clave: {desc, unidad, serie, variacion, meses_sin_dato, nota}}`), `errores_fuente`. `variacion` trae `puntos` para % y veces, y `pct` para montos. |
 | `consultar_ipc.py` | Siempre `fuente`, `archivo`, `pagina`, `ultimo_mes_publicado`, `unidad`. Un mes: `mes`, `datos` (`{"Nivel general": {mensual, interanual}, ...}`), `acumulada_anio_pct`. `--serie`: `serie`, `desde`, `hasta`, `datos` (`{periodo: {mensual, interanual}}`). `--acumulado`: `serie`, `desde`, `hasta`, `acumulada_pct`, `metodo`. `--ranking-divisiones`: `mes`, `nivel_general_mensual`, `divisiones_por_variacion_mensual`. |
+| `consultar_panel.py` | `version_oraculo`, `archivo` (el CSV), `modo` (`api` o `pdf`), `desde`, `hasta`, `periodos`, `entidades`, `grupos`, `lista_entidades` (`{codigo: "nombre (tipo)"}`), `campos` (`{clave: {desc, unidad, meses_con_dato, pct_celdas}}`), `fuente`, `pdfs`, `segundos`, `notas`, y si corresponde `avisos`, `errores_api`, `faltantes` y `entidades_historicas` (`{codigo: {nombre, ultimo_pdf, ultimo_mes_con_dato}}`). **El CSV** tiene una fila por período y entidad: `periodo` (`YYYY-MM`), `codigo` (número BCRA, o `AAA00`, `AAA10`, `AAA20`, `AAA50` para los agregados), `entidad`, `tipo` (`publico`, `privado`, `compania`, `grupo` o `historica`) y una columna por clave de campo, con celda vacía si no hay dato publicado. Montos en millones de pesos corrientes. |
 | `consultar_pagos.py` | `fuente`, `archivo`, `pagina`, `edicion`. Con `--series`: `hojas` (`{hoja: [{serie, medidas, ultimo_mes}]}`). Con `--buscar`: `resultados` (`[{hoja, serie, mes, cantidad, monto, ticket_promedio, var_mensual_*_pct}]`, o `datos` por mes con `--meses`), `nota`. |
 
 Ejemplo (`consultar_entidad.py Galicia --campo irr_tot pla --serie`, recortado):
@@ -297,7 +297,7 @@ Agregar una clave nueva al JSON es un cambio menor; renombrar o quitar una de es
 
 ## 5. Claves de los campos
 
-Las claves son las mismas en `bcra_comun.CAMPOS`, en todos los scripts y en los dos idiomas del skill. La referencia completa, con descripción, unidad, frecuencia y rezago de cada una, está en [`skill/bcra-oraculo/references/diccionario.md`](../skill/bcra-oraculo/references/diccionario.md) (en inglés, [`dictionary.md`](../skill/bcra-oracle-en/references/dictionary.md)). La lista también sale de `python3 scripts/consultar_entidad.py --campos`.
+Las claves son las mismas en `bcra_comun.CAMPOS`, en todos los scripts y en los dos idiomas del skill. La referencia completa, con descripción, unidad, frecuencia y rezago de cada una, está en `references/diccionario.md` (en el skill en inglés, `references/dictionary.md`). La lista también sale de `python3 scripts/consultar_entidad.py --campos`.
 
 | Sección | Frecuencia | Claves | Ejemplos |
 |---|---|---|---|
@@ -324,7 +324,7 @@ Las claves son las mismas en `bcra_comun.CAMPOS`, en todos los scripts y en los 
 
 Reglas:
 
-1. **Todo cambio en una firma o una clave sube la versión mayor y se registra en [`CHANGELOG.md`](../CHANGELOG.md)**, diciendo qué tienen que cambiar los skills que dependen.
-2. `bcra_comun.py` es idéntico en `skill/bcra-oraculo/` y `skill/bcra-oracle-en/`. Se cambia en los dos a la vez, con la misma `VERSION`.
-3. Antes de publicar, `python3 tools/verificar.py` tiene que pasar entero.
+1. **Todo cambio en una firma o una clave sube la versión mayor y se registra en [`CHANGELOG.md`](https://github.com/AGVD-CODE/BCRA-Oracle/blob/main/CHANGELOG.md)**, diciendo qué tienen que cambiar los skills que dependen.
+2. Los scripts y este contrato son idénticos en `skill/bcra-oraculo/` y `skill/bcra-oracle-en/`. Se cambian en los dos a la vez, con la misma `VERSION`.
+3. Antes de publicar, `python3 tools/verificar.py` (en la raíz del repositorio) tiene que pasar entero.
 4. Un skill que depende de `bcra-oraculo` controla la versión mayor al importar (sección 1) y, si incluye una copia, dice qué versión copió.

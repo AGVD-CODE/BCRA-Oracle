@@ -65,7 +65,7 @@ Used by `consultar_historico.py` (series longer than 5 periods) and `consultar_e
 - **Merged columns.** Sometimes two numbers are separated by a single space. The parser reads values token by token from the end of the line. If a row has fewer values than periods, it drops the row instead of guessing.
 - **Millions without separator.** Older PDFs print `1477.466,3` instead of `1.477.466,3`. The parser accepts both.
 - **Side text.** The entity name runs vertically in the margin and mixes into some lines. It is ignored.
-- **Incomplete recent quarter.** In a given month's PDF, the latest "Información adicional" quarter may be mostly "---". The next month's PDF fills it in: if the last PDF read is from a quarter-end month and that data is missing, `consultar_historico.py` also reads the next month's PDF.
+- **Incomplete recent quarter.** In a given month's PDF, the latest "Información adicional" quarter may be mostly "---". The next month's PDF fills it in: if the last PDF read is from a quarter-end month and that data is missing, `consultar_historico.py` and `consultar_panel.py` also read the next month's PDF.
 - **Requires `pdftotext`** (poppler-utils package). It is not a pip package.
 
 ---

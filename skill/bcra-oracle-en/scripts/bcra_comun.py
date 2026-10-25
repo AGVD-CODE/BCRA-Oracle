@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "2.1.1"
+VERSION = "2.1.2"
 
 BCRA = 'https://www.bcra.gob.ar'
 API = BCRA + '/api/endpoints/'

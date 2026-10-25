@@ -23,8 +23,8 @@ Qué comprueba:
   nombre, y la información trimestral de Galicia pidiendo solo un cierre de
   trimestre (2019-12), que completa el PDF del mes siguiente.
 - API frente a PDF: Galicia, todos los campos de los meses que comparten.
-- Los mismos valores de Galicia leídos con consultar_panel.py, y que el panel traiga
-  los agregados oficiales.
+- Los mismos valores de Galicia leídos con consultar_panel.py, que el panel traiga
+  los agregados oficiales y que complete el cierre de trimestre (2019-12).
 - Funcionamiento en vivo de los 7 scripts: resumen, totales del sistema, nombre
   ambiguo, ranking, historia, panel, IPC, medios de pago y ficha institucional.
 
@@ -279,6 +279,30 @@ def control_panel():
                   not faltan, ', '.join(faltan))
 
 
+def control_panel_trimestre():
+    """Cierre de trimestre pedido solo: lo completa el PDF del mes siguiente (desde la 2.1.2)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = os.path.join(tmp, 'panel.csv')
+        d, t = correr('consultar_panel.py', '--entidades', 'Galicia', '--desde', '2019-12',
+                      '--hasta', '2019-12', '--modo', 'pdf', '--campos',
+                      *GALICIA_DICIEMBRE_2019_ADICIONAL, '--salida', ruta)
+        titulo('Panel: cierre de trimestre pedido solo (%.1f s)' % t)
+        err = error_de(d)
+        fila = None
+        if not err:
+            with open(ruta, newline='', encoding='utf-8') as fh:
+                fila = next((r for r in csv.DictReader(fh)
+                             if (r['periodo'], r['codigo']) == ('2019-12', '7')), None)
+            if fila is None:
+                err = 'el CSV no tiene la fila de Galicia en 2019-12'
+        if err:
+            fallar_todos('panel: Galicia (2019-12)', GALICIA_DICIEMBRE_2019_ADICIONAL, err)
+            return
+        for k, v in GALICIA_DICIEMBRE_2019_ADICIONAL.items():
+            controlar('panel: Galicia %s (2019-12, trimestral)' % k,
+                      float(fila[k]) if fila[k] else None, v)
+
+
 def control_ipc():
     titulo('Valores de control: IPC nacional del INDEC')
     for mes, esperado in IPC_MENSUAL.items():
@@ -418,6 +442,7 @@ def main():
         control_pdf_galicia()
         control_historia()
         control_panel()
+        control_panel_trimestre()
         control_ipc()
         control_api_frente_a_pdf()
         en_vivo()

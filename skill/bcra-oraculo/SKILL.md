@@ -51,7 +51,7 @@ Lista completa: `python3 scripts/consultar_entidad.py --campos` o `references/di
 
 - **Mora y calidad de cartera (mensual, %):** `irr_tot` mora total · `irr_cons` consumo · `irr_com` comercial · `irr_priv` sector privado · `prev_irr` cobertura con previsiones · `tf_s1`…`tf_s5` situaciones · `tf_irregular` situaciones 3+4+5.
 - **Rentabilidad y otros indicadores (mensual):** `roe` · `roa` · `apalancamiento` (veces) · `tasa_prest` · `tasa_dep` · `liq_tit_cot` · `dep_empleado`.
-- **Balance (mensual, millones de pesos):** `bA` activo · `bPr` préstamos · `bDe` depósitos · `bPN` patrimonio neto · `bCA` saldo en cajas de ahorro · `bPF` plazos fijos · `bRes` resultado acumulado del ejercicio.
+- **Balance (mensual, millones de pesos):** `bA` activo · `bPr` préstamos · `bDe` depósitos · `bPN` patrimonio neto · `bCA` saldo en cajas de ahorro · `bPF` plazos fijos · `bRes` resultado acumulado del ejercicio · `bIrrec` castigos (créditos irrecuperables dados de baja, fuera del balance).
 - **Información adicional (trimestral, cantidades):** `pla` tarjetas de crédito · `tit` titulares · `deb` tarjetas de débito · `cah` cajas de ahorro · `cc` cuentas corrientes · `emp` empleados.
 - **Mensual, cantidades:** `remu` cuentas sueldo · `sucursales` · `cajeros`.
 

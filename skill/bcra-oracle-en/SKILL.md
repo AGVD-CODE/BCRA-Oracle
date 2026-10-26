@@ -53,7 +53,7 @@ Full list: `python3 scripts/consultar_entidad.py --campos` or `references/dictio
 
 - **NPL and portfolio quality (monthly, %):** `irr_tot` total NPL · `irr_cons` consumer · `irr_com` commercial · `irr_priv` private sector · `prev_irr` provision coverage · `tf_s1`…`tf_s5` debtor categories · `tf_irregular` categories 3+4+5.
 - **Profitability and other ratios (monthly):** `roe` · `roa` · `apalancamiento` leverage (times) · `tasa_prest` lending rate · `tasa_dep` deposit rate · `liq_tit_cot` liquidity · `dep_empleado` deposits per employee.
-- **Balance sheet (monthly, millions of pesos):** `bA` assets · `bPr` loans · `bDe` deposits · `bPN` equity · `bCA` savings-account balances · `bPF` time deposits · `bRes` year-to-date result.
+- **Balance sheet (monthly, millions of pesos):** `bA` assets · `bPr` loans · `bDe` deposits · `bPN` equity · `bCA` savings-account balances · `bPF` time deposits · `bRes` year-to-date result · `bIrrec` write-offs (uncollectible loans moved off the balance sheet).
 - **Additional information (quarterly, counts):** `pla` credit cards · `tit` cardholders · `deb` debit cards · `cah` savings accounts · `cc` checking accounts · `emp` employees.
 - **Monthly, counts:** `remu` payroll accounts · `sucursales` branches · `cajeros` ATMs.
 

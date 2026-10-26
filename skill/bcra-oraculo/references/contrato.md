@@ -2,7 +2,7 @@
 
 `bcra-oraculo` es la **capa de datos** de esta biblioteca de skills: descarga las publicaciones oficiales del BCRA y del INDEC, las normaliza y devuelve cada dato con una clave estable, su período, su unidad y su fuente. Los skills de análisis (por ejemplo, [estratega-bancario](https://github.com/AGVD-CODE/Banking-Metrics-Analyst)) se construyen encima y no vuelven a parsear las fuentes.
 
-Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.1.2** (`bcra_comun.VERSION`). Viaja dentro del skill (`references/contrato.md`), así que está disponible donde esté instalado.
+Este documento dice qué puede dar por estable un skill que depende de `bcra-oraculo` dentro de una misma versión mayor. Describe la **versión 2.2.0** (`bcra_comun.VERSION`). Viaja dentro del skill (`references/contrato.md`), así que está disponible donde esté instalado.
 
 ## Índice
 1. Dos formas de usarlo
@@ -177,7 +177,7 @@ Si varios PDF traen el mismo mes, quedarse con el del PDF más nuevo (puede tene
 
 ### `CAMPOS`
 
-`dict` de clave de campo a `(seccion, descripcion, unidad, aditivo)`. Hoy son 117 claves. `aditivo` es `True` para montos y cantidades, que se pueden sumar entre entidades (sirven para calcular participación de mercado); `False` para porcentajes y cocientes.
+`dict` de clave de campo a `(seccion, descripcion, unidad, aditivo)`. Hoy son 118 claves. `aditivo` es `True` para montos y cantidades, que se pueden sumar entre entidades (sirven para calcular participación de mercado); `False` para porcentajes y cocientes.
 
 ```python
 bc.CAMPOS['pla']      # ('adicional', 'Tarjetas de crédito (plásticos)', 'cantidad', True)
@@ -268,7 +268,7 @@ Para distinguir los dos casos del código 2, mirar si la salida estándar trae J
 | `consultar_ranking.py` | `campo`, `desc`, `unidad`, `periodo`, `grupo`, `orden`, `entidades_consultadas`, `entidades_con_dato`, `ranking` (`[{pos, entidad, codigo, valor, participacion_pct}]`), `valor_sistema_financiero`, `fuente`, `sin_dato_en_el_periodo`, `filtro`, `filtro_valor`, `nota_participacion`. |
 | `consultar_historico.py` | `entidad`, `codigo`, `desde`, `hasta`, `fuente`, `pdfs`, `datos` (`{clave: {desc, unidad, serie, variacion, meses_sin_dato, nota}}`), `errores_fuente`. `variacion` trae `puntos` para % y veces, y `pct` para montos. |
 | `consultar_ipc.py` | Siempre `fuente`, `archivo`, `pagina`, `ultimo_mes_publicado`, `unidad`. Un mes: `mes`, `datos` (`{"Nivel general": {mensual, interanual}, ...}`), `acumulada_anio_pct`. `--serie`: `serie`, `desde`, `hasta`, `datos` (`{periodo: {mensual, interanual}}`). `--acumulado`: `serie`, `desde`, `hasta`, `acumulada_pct`, `metodo`. `--ranking-divisiones`: `mes`, `nivel_general_mensual`, `divisiones_por_variacion_mensual`. |
-| `consultar_panel.py` | `version_oraculo`, `archivo` (el CSV), `modo` (`api` o `pdf`), `desde`, `hasta`, `periodos`, `entidades`, `grupos`, `lista_entidades` (`{codigo: "nombre (tipo)"}`), `campos` (`{clave: {desc, unidad, meses_con_dato, pct_celdas}}`), `fuente`, `pdfs`, `segundos`, `notas`, y si corresponde `avisos`, `errores_api`, `faltantes` y `entidades_historicas` (`{codigo: {nombre, ultimo_pdf, ultimo_mes_con_dato}}`). **El CSV** tiene una fila por período y entidad: `periodo` (`YYYY-MM`), `codigo` (número BCRA, o `AAA00`, `AAA10`, `AAA20`, `AAA50` para los agregados), `entidad`, `tipo` (`publico`, `privado`, `compania`, `grupo` o `historica`) y una columna por clave de campo, con celda vacía si no hay dato publicado. Montos en millones de pesos corrientes. |
+| `consultar_panel.py` | `version_oraculo`, `archivo` (el CSV), `modo` (`api` o `pdf`), `desde`, `hasta`, `periodos`, `entidades`, `grupos`, `lista_entidades` (`{codigo: "nombre (tipo)"}`), `campos` (`{clave: {desc, unidad, meses_con_dato, pct_celdas}}`), `fuente`, `pdfs`, `segundos`, `notas`, `validacion` (desde la 2.2: controles contables sobre el panel, cada uno `{controles, fallas, ok, ejemplos}`: `activo_igual_pasivo_mas_pn`, `suma_entidades_igual_sistema` con todas las entidades y `--historicas`, `mora_ponderada_igual_sistema` con todas las entidades; sin las históricas, `cobertura_activo_sistema_pct`) y si corresponde `avisos`, `errores_api`, `faltantes` y `entidades_historicas` (`{codigo: {nombre, ultimo_pdf, ultimo_mes_con_dato}}`). **El CSV** tiene una fila por período y entidad: `periodo` (`YYYY-MM`), `codigo` (número BCRA, o `AAA00`, `AAA10`, `AAA20`, `AAA50` para los agregados), `entidad`, `tipo` (`publico`, `privado`, `compania`, `grupo` o `historica`) y una columna por clave de campo, con celda vacía si no hay dato publicado. Montos en millones de pesos corrientes. |
 | `consultar_pagos.py` | `fuente`, `archivo`, `pagina`, `edicion`. Con `--series`: `hojas` (`{hoja: [{serie, medidas, ultimo_mes}]}`). Con `--buscar`: `resultados` (`[{hoja, serie, mes, cantidad, monto, ticket_promedio, var_mensual_*_pct}]`, o `datos` por mes con `--meses`), `nota`. |
 
 Ejemplo (`consultar_entidad.py Galicia --campo irr_tot pla --serie`, recortado):

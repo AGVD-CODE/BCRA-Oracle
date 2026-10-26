@@ -2,6 +2,23 @@
 
 Cambios de los skills `bcra-oraculo` (español) y `bcra-oracle-en` (inglés). Las versiones siguen [versionado semántico](https://semver.org/lang/es/) según la política de [`docs/CONTRATO.md`](docs/CONTRATO.md): un cambio en una firma pública de `bcra_comun.py`, en una clave de campo o en una clave del JSON de los scripts sube la versión mayor.
 
+## [2.2.0] — 2026-10-25
+
+Agrega los castigos y la validación contable del panel. Compatible con la 2.1: no cambia ninguna firma, clave de campo ni clave del JSON existente.
+
+### Agregado
+
+- **Campo `bIrrec`: castigos.** Son los créditos irrecuperables que el banco ya dio de baja del activo y pasó a partidas fuera del balance (stock acumulado, en millones de pesos). Sirve para detectar "maquillaje" de cartera: si los castigos crecen rápido, la mora visible baja aunque la pérdida existió.
+  - Se lee del PDF desde 2014 (hasta 2017 figuraba como "Créditos irrecuperables en Cuentas de Orden") y de la API.
+  - Está en el set por defecto de `consultar_panel.py`.
+- **`validacion` en el JSON de `consultar_panel.py`:** controles contables sobre el panel armado.
+  - `activo_igual_pasivo_mas_pn`, por fila.
+  - `suma_entidades_igual_sistema`, cuando el panel trae todas las entidades y también las históricas.
+  - `mora_ponderada_igual_sistema`: la mora de las entidades ponderada por sus financiaciones da la del sistema.
+
+  Si algún control falla, se agrega un aviso. Sin las históricas, en lugar del control de suma informa `cobertura_activo_sistema_pct`.
+- `tools/verificar.py`: castigos de Santander (2026-07) y Galicia (2016-06), y la validación contable de un panel completo.
+
 ## [2.1.2] — 2026-10-25
 
 Parche: no cambian firmas, claves de campo ni claves del JSON. Los skills que dependen de este lo usan sin cambios.
@@ -106,6 +123,7 @@ Primera versión publicada. La versión en inglés (`bcra-oracle-en`) se agregó
 - Referencias: `fuentes.md`, `diccionario.md` (31 campos) y `consultas.md`.
 - Paquete `bcra-oraculo.skill`.
 
+[2.2.0]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.2.0
 [2.1.2]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.1.2
 [2.1.1]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.1.1
 [2.1.0]: https://github.com/AGVD-CODE/BCRA-Oracle/releases/tag/v2.1.0

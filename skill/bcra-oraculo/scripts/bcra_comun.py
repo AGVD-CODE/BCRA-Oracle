@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "2.1.2"
+VERSION = "2.2.0"
 
 BCRA = 'https://www.bcra.gob.ar'
 API = BCRA + '/api/endpoints/'
@@ -466,6 +466,11 @@ _c('balance', 'millones de pesos', True, [
     ('bRM', 'Resultado monetario acumulado del ejercicio'),
     ('bIG', 'Impuesto a las ganancias acumulado del ejercicio'),
 ])
+# Partidas fuera de balance (mensual). Créditos irrecuperables que el banco dio de baja del
+# activo ("castigos"): sacarlos baja la mora contable aunque la pérdida existió.
+_c('balance', 'millones de pesos', True, [
+    ('bIrrec', 'Créditos irrecuperables en partidas fuera del balance (castigos acumulados)'),
+])
 BAL_MAPA = {
     ('activo', 'ACTIVO'): 'bA', ('activo', 'EFECTIVOYDEPOSITOENBANCOS'): 'bEf',
     ('activo', 'TITULOSPUBLICOSYPRIVADOS'): 'bTi', ('activo', 'PRESTAMOS'): 'bPr',
@@ -482,10 +487,12 @@ BAL_MAPA = {
     ('res', 'INGRESOSPORSERVICIOS'): 'bIS', ('res', 'EGRESOSPORSERVICIOS'): 'bES',
     ('res', 'GASTOSDEADMINISTRACION'): 'bGA', ('res', 'RESULTADOMONETARIO'): 'bRM',
     ('res', 'IMPUESTOALASGANANCIAS'): 'bIG',
+    ('fuera', 'CREDITOSIRRECUPERABLESENPARTIDASFUERADELBALANCE'): 'bIrrec',
+    ('fuera', 'CREDITOSIRRECUPERABLESENCUENTASDEORDEN'): 'bIrrec',  # nombre hasta 2017
 }
 BAL_SECCION = {'ACTIVO': 'activo', 'PASIVO': 'pasivo', 'PATRIMONIONETO': 'pn',
                'RDOSINTEGRALESACUMDELPERIODO': 'res', 'PARTIDASFUERADEBALANCE': 'fuera',
-               'PARTIDASFUERADELBALANCE': 'fuera'}
+               'PARTIDASFUERADELBALANCE': 'fuera', 'CUENTASDEORDEN': 'fuera'}
 
 # Situación de deudores (mensual). Montos en millones de pesos.
 _c('cartera', 'millones de pesos', True, [

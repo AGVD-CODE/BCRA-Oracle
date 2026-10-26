@@ -97,6 +97,7 @@ Millions of current pesos (the API publishes thousands and the script divides by
 | `bGA` | Administrative expenses, year to date (negative) | millions of pesos |
 | `bRM` | Monetary result (inflation adjustment), year to date | millions of pesos |
 | `bIG` | Income tax, year to date | millions of pesos |
+| `bIrrec` | Uncollectible loans in off-balance-sheet items: loans the bank already wrote off ("castigos"), cumulative stock. If it grows fast, reported NPLs fall even though the loss happened. Labeled "en Cuentas de Orden" in PDFs up to 2017 | millions of pesos |
 
 ---
 

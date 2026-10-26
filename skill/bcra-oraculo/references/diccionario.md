@@ -97,6 +97,7 @@ Millones de pesos corrientes (la API publica miles de pesos y el script divide p
 | `bGA` | Gastos de administración acumulados del ejercicio (negativo) | millones de pesos |
 | `bRM` | Resultado monetario acumulado del ejercicio | millones de pesos |
 | `bIG` | Impuesto a las ganancias acumulado del ejercicio | millones de pesos |
+| `bIrrec` | Créditos irrecuperables en partidas fuera del balance: los que el banco ya dio de baja del activo ("castigos"), en stock acumulado. Si crece rápido, baja la mora visible aunque la pérdida existió. En los PDF hasta 2017 figura como "en Cuentas de Orden" | millones de pesos |
 
 ---
 

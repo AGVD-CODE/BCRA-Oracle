@@ -53,7 +53,7 @@ CAMPOS_DEFECTO = [
     # balance (millones de pesos corrientes; resultados acumulados del ejercicio)
     'bA', 'bEf', 'bTi', 'bPr', 'bPr_priv', 'bAdel', 'bDoc', 'bHip', 'bPrend', 'bPers', 'bPrev',
     'bP', 'bDe', 'bDe_priv', 'bCC', 'bCA', 'bPF', 'bPN', 'bRes', 'bIF', 'bEgF', 'bInc', 'bIS',
-    'bES', 'bGA', 'bRM', 'bIG',
+    'bES', 'bGA', 'bRM', 'bIG', 'bIrrec',
     # indicadores (%)
     'irr_tot', 'irr_priv', 'irr_cons', 'irr_com', 'prev_irr', 'part_cons', 'part_com', 'roe',
     'roa', 'tasa_prest', 'tasa_dep', 'apalancamiento', 'absorc_gastos', 'margen_fin_activo',
@@ -221,6 +221,79 @@ def plan_pdfs(desde, hasta):
     return plan
 
 
+# ------------------------------------------------------------------ validación
+
+def validar(panel, codigos, tipos, con_historicas):
+    """Controles contables sobre el panel armado. Cada control corre solo si están sus campos.
+
+    - activo_igual_pasivo_mas_pn: bA = bP + bPN por fila (tolerancia 0,1 %, por redondeo).
+    - suma_entidades_igual_sistema: la suma del activo de todas las entidades = el activo del
+      sistema (AAA00), si el panel trae todas las vigentes y las históricas (tolerancia 1 %).
+      Sin las históricas, en lugar del control se informa cuánto del activo del sistema cubre
+      el panel en su último mes (cobertura_activo_sistema_pct).
+    - mora_ponderada_igual_sistema: mora total del sistema (AAA00) = mora de las entidades
+      ponderada por sus financiaciones (tf_total), si el panel trae todas (tolerancia 0,3 pp).
+    """
+    out = {}
+
+    def control(nombre, fallas, total, ejemplos):
+        out[nombre] = {'controles': total, 'fallas': len(fallas), 'ok': not fallas,
+                       'ejemplos': fallas[:ejemplos]}
+
+    fallas, n = [], 0
+    for (p, c), v in panel.items():
+        if all(v.get(k) is not None for k in ('bA', 'bP', 'bPN')):
+            n += 1
+            dif = v['bA'] - v['bP'] - v['bPN']
+            if abs(dif) > 0.001 * abs(v['bA']) + 0.2:
+                fallas.append({'periodo': p, 'codigo': str(c), 'diferencia': round(dif, 1)})
+    if n:
+        control('activo_igual_pasivo_mas_pn', fallas, n, 5)
+
+    periodos = sorted({p for p, _ in panel})
+    elegidos = set(codigos)
+    entidades = [c for c in {c for _, c in panel} if not isinstance(c, str)]
+    if set(tipos) <= elegidos and periodos:
+        if con_historicas:
+            fallas, n = [], 0
+            for p in periodos:
+                s = panel.get((p, 'AAA00'), {}).get('bA')
+                vals = [panel.get((p, c), {}).get('bA') for c in entidades]
+                vals = [x for x in vals if x is not None]
+                if s is None or not vals:
+                    continue
+                n += 1
+                if abs(sum(vals) / s - 1) > 0.01:
+                    fallas.append({'periodo': p, 'suma_entidades': round(sum(vals), 1), 'sistema_bcra': s})
+            if n:
+                control('suma_entidades_igual_sistema', fallas, n, 3)
+        else:
+            p = periodos[-1]
+            s = panel.get((p, 'AAA00'), {}).get('bA')
+            vals = [panel.get((p, c), {}).get('bA') for c in entidades]
+            vals = [x for x in vals if x is not None]
+            if s and vals:
+                out['cobertura_activo_sistema_pct'] = {'periodo': p, 'valor': round(100 * sum(vals) / s, 2)}
+
+    todas = [c for c in tipos]
+    if set(todas) <= elegidos:
+        fallas, n = [], 0
+        for p in periodos:
+            s = panel.get((p, 'AAA00'), {}).get('irr_tot')
+            pares = [(panel.get((p, c), {}).get('irr_tot'), panel.get((p, c), {}).get('tf_total'))
+                     for c in todas]
+            pares = [(m, f) for m, f in pares if m is not None and f]
+            if s is None or not pares:
+                continue
+            n += 1
+            pond = sum(m * f for m, f in pares) / sum(f for _, f in pares)
+            if abs(pond - s) > 0.3:
+                fallas.append({'periodo': p, 'ponderada': round(pond, 2), 'sistema_bcra': s})
+        if n:
+            control('mora_ponderada_igual_sistema', fallas, n, 3)
+    return out
+
+
 # ------------------------------------------------------------------ main
 
 def main():
@@ -386,6 +459,14 @@ def main():
         out['nota_historicas'] = ('Entidades que reportaron en el período y hoy no están vigentes (tipo '
                                   '"historica"). Si una fue absorbida por una entidad del panel, sumarla '
                                   'hacia atrás antes de comparar cuotas (pro forma).')
+    # Las históricas solo se buscan en los PDF: con la API no se puede cerrar contra el sistema
+    val = validar(panel, codigos, tipos, a.historicas and modo == 'pdf')
+    if val:
+        out['validacion'] = val
+        malos = [k for k, v in val.items() if 'ok' in v and not v['ok']]
+        if malos:
+            avisos.append('La validación contable encontró diferencias en: %s (ver "validacion").'
+                          % ', '.join(malos))
     if avisos:
         out['avisos'] = avisos
     if errores_api:

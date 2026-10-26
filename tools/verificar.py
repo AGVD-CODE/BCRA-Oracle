@@ -25,6 +25,8 @@ Qué comprueba:
 - API frente a PDF: Galicia, todos los campos de los meses que comparten.
 - Los mismos valores de Galicia leídos con consultar_panel.py, que el panel traiga
   los agregados oficiales y que complete el cierre de trimestre (2019-12).
+- Castigos (Santander 2026-07, Galicia 2016-06) y la validación contable de un panel
+  completo con las entidades históricas.
 - Funcionamiento en vivo de los 7 scripts: resumen, totales del sistema, nombre
   ambiguo, ranking, historia, panel, IPC, medios de pago y ficha institucional.
 
@@ -70,6 +72,9 @@ RENOMBRADAS = [('Santander', '2021-12', {'bA': 1449854.4, 'irr_tot': 3.63}),
 # Cierre de trimestre: el PDF de diciembre de 2019 trae estos campos en '---' y el de
 # enero de 2020 los completa
 GALICIA_DICIEMBRE_2019_ADICIONAL = {'pla': 7641410, 'tit': 3807884, 'emp': 6118}
+# Castigos (bIrrec): créditos irrecuperables fuera del balance. El de 2016 usa el nombre viejo
+# de la fila ("en Cuentas de Orden").
+CASTIGOS = [('Santander', '2026-07', 466258.1), ('Galicia', '2016-06', 1214.4)]
 
 resultados = []
 entorno = dict(os.environ)
@@ -303,6 +308,34 @@ def control_panel_trimestre():
                       float(fila[k]) if fila[k] else None, v)
 
 
+def control_castigos_y_validacion():
+    """Castigos (bIrrec) en el PDF de hoy y en uno de 2016, y la validación contable (desde la 2.2.0)."""
+    titulo('Castigos (créditos irrecuperables fuera del balance)')
+    for entidad, mes, esperado in CASTIGOS:
+        d, t = correr('consultar_historico.py', entidad, '--campo', 'bIrrec', '--desde', mes,
+                      '--hasta', mes)
+        err = error_de(d) or '; '.join(d.get('errores_fuente', []))
+        if err:
+            registrar('%s bIrrec (%s)' % (entidad, mes), False, err)
+        else:
+            controlar('%s bIrrec (%s)' % (entidad, mes), d['datos']['bIrrec']['serie'].get(mes), esperado)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        d, t = correr('consultar_panel.py', '--entidades', 'todas', '--meses', '6', '--historicas', '--modo', 'pdf',
+                      '--campos', 'bA', 'bP', 'bPN', 'irr_tot', 'tf_total',
+                      '--salida', os.path.join(tmp, 'p.csv'))
+    titulo('Validación contable de un panel completo, 6 meses (%.1f s)' % t)
+    val = d.get('validacion') or {}
+    if error_de(d) or not val:
+        registrar('panel: validación contable', False, error_de(d) or 'el JSON no trae "validacion"')
+        return
+    for k in ('activo_igual_pasivo_mas_pn', 'suma_entidades_igual_sistema', 'mora_ponderada_igual_sistema'):
+        v = val.get(k)
+        registrar('panel: %s' % k, bool(v and v['ok']),
+                  'no se corrió' if not v else '%d controles, %d fallas %s' % (
+                      v['controles'], v['fallas'], json.dumps(v['ejemplos'], ensure_ascii=False)[:200]))
+
+
 def control_ipc():
     titulo('Valores de control: IPC nacional del INDEC')
     for mes, esperado in IPC_MENSUAL.items():
@@ -443,6 +476,7 @@ def main():
         control_historia()
         control_panel()
         control_panel_trimestre()
+        control_castigos_y_validacion()
         control_ipc()
         control_api_frente_a_pdf()
         en_vivo()
